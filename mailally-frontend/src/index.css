@@ -1,0 +1,397 @@
+@import "tailwindcss";
+
+@source "../index.html";
+@source "./**/*.{js,jsx,ts,tsx}";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-heading: 'Inter', system-ui, sans-serif;
+  --color-mailally-blue: #1F57F5;
+  --color-mailally-sky: #2BAFF2;
+  --color-mailally-cyan: #00DDFF;
+  --color-mailally-ice: #F0F7FF;
+  --color-mailally-white: #FFFFFF;
+}
+
+/* ─── CSS Custom Properties for MailAlly Ice Blue Inter Theme ─── */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  :root {
+    --font-heading: 'Inter', system-ui, sans-serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+
+    /* Ice Blue Bright Palette Tokens (No Black!) */
+    --palette-sky: #2BAFF2;
+    --palette-blue: #1F57F5;
+    --palette-cyan: #00DDFF;
+    --palette-ice-bg: #F0F7FF;
+    --palette-white: #FFFFFF;
+
+    /* Derived Tones */
+    --claude-bg: #F0F7FF;
+    --claude-surface: #FFFFFF;
+    --claude-surface-elevated: #E6F0FA;
+    --claude-surface-hover: #D9E8F8;
+
+    --claude-text: #1E293B;
+    --claude-text-secondary: #334155;
+    --claude-text-muted: #64748B;
+    --claude-border: #E2E8F0;
+    --claude-border-strong: #CBD5E1;
+
+    --mailally-gradient-primary: linear-gradient(135deg, #1F57F5 0%, #2BAFF2 100%);
+    --mailally-gradient-ice: linear-gradient(135deg, #1E3A8A 0%, #1F57F5 50%, #2BAFF2 100%);
+  }
+
+  * {
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  body, button, input, select, textarea, span, p, a, div, h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+    letter-spacing: -0.01em;
+  }
+
+  body {
+    background-color: var(--claude-bg);
+    color: var(--claude-text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.025em !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ICE BLUE GLASS & CARD SYSTEM
+   ═══════════════════════════════════════════════════════════════ */
+
+.bg-dot-pattern {
+  background-image: radial-gradient(#CBD5E1 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.radial-glow-cyan {
+  position: absolute;
+  width: 550px;
+  height: 550px;
+  background: radial-gradient(circle, rgba(0, 221, 255, 0.2) 0%, rgba(0, 221, 255, 0) 70%);
+  filter: blur(70px);
+  pointer-events: none;
+}
+
+.radial-glow-blue {
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(31, 87, 245, 0.18) 0%, rgba(31, 87, 245, 0) 70%);
+  filter: blur(80px);
+  pointer-events: none;
+}
+
+/* Ice Blue Card */
+.claude-card, .mailally-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 24px;
+  padding: 1.75rem;
+  box-shadow: 0 4px 20px -2px rgba(31, 87, 245, 0.05), 0 2px 6px -1px rgba(31, 87, 245, 0.02);
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.claude-card:hover, .mailally-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(31, 87, 245, 0.35);
+  box-shadow: 0 20px 40px -10px rgba(31, 87, 245, 0.14), 0 0 20px rgba(0, 221, 255, 0.18);
+}
+
+/* Browser Frame */
+.browser-window-frame {
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  border-radius: 20px;
+  box-shadow: 0 25px 50px -12px rgba(31, 87, 245, 0.12), 0 0 30px rgba(0, 221, 255, 0.15);
+  overflow: hidden;
+  transition: all 0.35s ease;
+}
+
+.browser-window-frame:hover {
+  box-shadow: 0 30px 60px -12px rgba(31, 87, 245, 0.22), 0 0 40px rgba(0, 221, 255, 0.25);
+}
+
+/* Glass Navbar */
+.card-glass, .glass-navbar {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 8px 32px 0 rgba(31, 87, 245, 0.06);
+}
+
+/* Highlighted Price Card */
+.mailally-card-highlight {
+  background: #FFFFFF;
+  border: 2px solid #1F57F5;
+  border-radius: 24px;
+  box-shadow: 0 20px 40px -10px rgba(31, 87, 245, 0.22), 0 0 25px rgba(0, 221, 255, 0.2);
+  position: relative;
+  transition: all 0.35s ease;
+}
+
+.mailally-card-highlight:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 28px 56px -12px rgba(31, 87, 245, 0.32), 0 0 35px rgba(0, 221, 255, 0.3);
+}
+
+/* Buttons */
+.mailally-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  padding: 0.875rem 1.75rem;
+  background: linear-gradient(135deg, #1F57F5 0%, #2BAFF2 100%);
+  color: #FFFFFF;
+  font-weight: 800;
+  font-size: 0.875rem;
+  font-family: var(--font-heading);
+  border-radius: 14px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 16px rgba(31, 87, 245, 0.35);
+}
+
+.mailally-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(31, 87, 245, 0.45);
+  filter: brightness(1.05);
+}
+
+.mailally-btn-accent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  padding: 0.875rem 1.75rem;
+  background: linear-gradient(135deg, #1F57F5 0%, #00DDFF 100%);
+  color: #FFFFFF;
+  font-weight: 800;
+  font-size: 0.875rem;
+  font-family: var(--font-heading);
+  border-radius: 14px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 16px rgba(31, 87, 245, 0.35);
+}
+
+.mailally-btn-accent:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(0, 221, 255, 0.45);
+  filter: brightness(1.08);
+}
+
+.mailally-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  padding: 0.875rem 1.75rem;
+  background: #FFFFFF;
+  color: #1F57F5;
+  font-weight: 800;
+  font-size: 0.875rem;
+  font-family: var(--font-heading);
+  border-radius: 14px;
+  border: 1px solid #CBD5E1;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.mailally-btn-secondary:hover {
+  transform: translateY(-2px);
+  background: #F0F7FF;
+  border-color: #1F57F5;
+  box-shadow: 0 6px 16px rgba(31, 87, 245, 0.12);
+}
+
+/* Gradients */
+.blue-gradient-text {
+  background: linear-gradient(135deg, #1F57F5 0%, #2BAFF2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.cyan-gradient-text {
+  background: linear-gradient(135deg, #2BAFF2 0%, #00DDFF 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Badges */
+.badge-blue {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 1rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: rgba(31, 87, 245, 0.08);
+  color: #1F57F5;
+  border: 1px solid rgba(31, 87, 245, 0.25);
+}
+
+.badge-cyan {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 1rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: rgba(0, 221, 255, 0.12);
+  color: #0088AA;
+  border: 1px solid rgba(0, 221, 255, 0.3);
+}
+
+
+/* Continuous Logo Marquee */
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  display: flex;
+  width: 200%;
+  animation: marquee 30s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+.animate-float-slow {
+  animation: floatSlow 5s ease-in-out infinite;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   TEXT GRADIENTS & BADGES
+   ═══════════════════════════════════════════════════════════════ */
+
+.orange-gradient-text {
+  background: linear-gradient(135deg, #E6701E 0%, #F97316 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.blue-gradient-text {
+  background: linear-gradient(135deg, #2471E7 0%, #3B82F6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.brand-gradient-text {
+  background: linear-gradient(135deg, #E6701E 0%, #2471E7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.badge-orange {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 1rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: rgba(230, 112, 30, 0.08);
+  color: #E6701E;
+  border: 1px solid rgba(230, 112, 30, 0.25);
+}
+
+.badge-blue {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 1rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: rgba(36, 113, 231, 0.08);
+  color: #2471E7;
+  border: 1px solid rgba(36, 113, 231, 0.25);
+}
+
+/* Continuous Logo Marquee Animation */
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  display: flex;
+  width: 200%;
+  animation: marquee 30s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* Floating Elements Animation */
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+.animate-float-slow {
+  animation: floatSlow 5s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.05); }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 4s ease-in-out infinite;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #F8FAFC;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+

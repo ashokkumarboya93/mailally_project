@@ -1,0 +1,79 @@
+spring.application.name=mailally-backend
+server.port=8081
+
+spring.datasource.url=jdbc:mysql://localhost:3306/mailally?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+spring.datasource.username=root
+spring.datasource.password=root
+
+spring.jpa.hibernate.ddl-auto=none
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQLDialect
+
+# JWT Configuration
+application.security.jwt.secret-key=MailAllySuperSecretKeyForJWTAuthentication2026ProductionGradeTokenGenerationKey
+application.security.jwt.expiration=86400000
+
+# ============================================
+# Email Engine Configuration
+# ============================================
+
+# Active Provider: SMTP | BREVO | SES
+mailally.email.active-provider=SMTP
+mailally.email.default-sender-name=MailAlly
+mailally.email.default-sender-email=info@marcamor.com
+mailally.email.max-retries=3
+
+# SMTP Configuration (Brevo Relay)
+spring.mail.host=smtp-relay.brevo.com
+spring.mail.port=587
+spring.mail.username=info@marcamor.com
+spring.mail.password=YOUR_BREVO_SMTP_PASSWORD
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+spring.mail.properties.mail.smtp.starttls.required=true
+spring.mail.properties.mail.smtp.connectiontimeout=30000
+spring.mail.properties.mail.smtp.timeout=30000
+spring.mail.properties.mail.smtp.writetimeout=30000
+
+# Brevo (Sendinblue) Configuration
+mailally.email.brevo.api-key=YOUR_BREVO_API_KEY
+mailally.email.brevo.api-url=https://api.brevo.com/v3/smtp/email
+mailally.email.brevo.sender-name=Sandeep Tekkali
+mailally.email.brevo.sender-email=info@marcamor.com
+mailally.email.brevo.smtp-host=smtp-relay.brevo.com
+mailally.email.brevo.smtp-port=587
+
+# Amazon SES Configuration — Stub (configure later)
+mailally.email.ses.access-key=your-ses-access-key
+mailally.email.ses.secret-key=your-ses-secret-key
+mailally.email.ses.region=us-east-1
+
+# Gemini AI Engine Configuration
+mailally.ai.active-provider=GEMINI
+mailally.ai.gemini-api-key=YOUR_GEMINI_API_KEY
+
+# ============================================
+# Redis Connection Configuration
+# ============================================
+spring.data.redis.host=localhost
+spring.data.redis.port=6379
+spring.data.redis.timeout=5000
+
+# ============================================
+# Kafka Broker Configuration
+# ============================================
+spring.kafka.enabled=false
+spring.kafka.bootstrap-servers=localhost:9092
+spring.kafka.producer.key-serializer=org.apache.kafka.common.serialization.StringSerializer
+spring.kafka.producer.value-serializer=org.springframework.kafka.support.serializer.JsonSerializer
+spring.kafka.consumer.key-deserializer=org.apache.kafka.common.serialization.StringDeserializer
+spring.kafka.consumer.value-deserializer=org.springframework.kafka.support.serializer.JsonDeserializer
+spring.kafka.consumer.properties.spring.json.trusted.packages=*
+spring.kafka.consumer.group-id=mailally-group
+
+# ============================================
+# Quartz Scheduler Configuration
+# ============================================
+spring.quartz.job-store-type=memory
+spring.quartz.properties.org.quartz.threadPool.threadCount=5
