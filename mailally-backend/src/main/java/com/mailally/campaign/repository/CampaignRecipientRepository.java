@@ -28,6 +28,12 @@ public interface CampaignRecipientRepository extends JpaRepository<CampaignRecip
 
     long countByCampaignIdAndStatus(Long campaignId, String status);
 
+    Optional<CampaignRecipient> findFirstByResponseId(String responseId);
+
+    Optional<CampaignRecipient> findFirstByResponseIdContaining(String responseIdPart);
+
+    Optional<CampaignRecipient> findFirstByContactEmailIgnoreCaseOrderByQueuedAtDesc(String email);
+
     @Query("SELECT cr FROM CampaignRecipient cr JOIN FETCH cr.contact JOIN FETCH cr.campaign LEFT JOIN FETCH cr.campaign.organization LEFT JOIN FETCH cr.campaign.template WHERE cr.campaign.id = :campaignId AND cr.status = 'QUEUED'")
     List<CampaignRecipient> findQueuedRecipients(@Param("campaignId") Long campaignId, Pageable pageable);
 }

@@ -181,6 +181,7 @@ public class CampaignWorkerService {
 
                 if (result.isSuccess()) {
                     recipient.setStatus("SENT");
+                    recipient.setProviderMessageId(result.getResponseId());
                     recipient.setSmtpResponseCode(result.getSmtpResponseCode() != null ? result.getSmtpResponseCode() : "250 OK");
                     progressCache.incrementSent(campaignId);
                     sent++;

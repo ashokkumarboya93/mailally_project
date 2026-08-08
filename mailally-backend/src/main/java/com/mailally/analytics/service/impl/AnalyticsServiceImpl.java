@@ -76,6 +76,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     private final EmailProviderFactory providerFactory;
     private final AnalyticsValidator analyticsValidator;
     private final AnalyticsMapper analyticsMapper;
+    private final com.mailally.analytics.engine.EventAggregationEngine eventAggregationEngine;
 
     public AnalyticsServiceImpl(CampaignRepository campaignRepository,
                                 EmailRepository emailRepository,
@@ -89,7 +90,8 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                                 OrganizationRepository organizationRepository,
                                 EmailProviderFactory providerFactory,
                                 AnalyticsValidator analyticsValidator,
-                                AnalyticsMapper analyticsMapper) {
+                                AnalyticsMapper analyticsMapper,
+                                com.mailally.analytics.engine.EventAggregationEngine eventAggregationEngine) {
         this.campaignRepository = campaignRepository;
         this.emailRepository = emailRepository;
         this.emailQueueRepository = emailQueueRepository;
@@ -103,6 +105,14 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         this.providerFactory = providerFactory;
         this.analyticsValidator = analyticsValidator;
         this.analyticsMapper = analyticsMapper;
+        this.eventAggregationEngine = eventAggregationEngine;
+    }
+
+    @Override
+    public com.mailally.analytics.dto.AnalyticsV1Dto getAnalyticsV1(CustomUserDetails currentUser, Long campaignId, LocalDateTime dateFrom, LocalDateTime dateTo) {
+        analyticsValidator.validateAuthenticatedUser(currentUser);
+        Long orgId = currentUser.getOrganizationId();
+        return eventAggregationEngine.aggregateAnalytics(orgId, campaignId);
     }
 
     @Override
@@ -159,17 +169,30 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         List<CampaignAnalyticsDto> list = new ArrayList<>();
 
         for (Campaign c : campaigns) {
-            long sent = recipientLogRepository.countByCampaignIdAndStatus(c.getId(), "SENT");
-            long failed = recipientLogRepository.countByCampaignId(c.getId()) - sent;
-            if (failed < 0) failed = 0;
-            long pending = recipientLogRepository.countByCampaignIdAndStatus(c.getId(), "QUEUED");
-            if (sent == 0 && c.getSentCount() != null && c.getSentCount() > 0) {
-                sent = c.getSentCount();
-            }
-            if (failed == 0 && c.getFailedCount() != null && c.getFailedCount() > 0) {
-                failed = c.getFailedCount();
-            }
-            list.add(analyticsMapper.toCampaignAnalyticsDto(c, sent, failed, pending));
+            com.mailally.analytics.dto.AnalyticsV1Dto agg = eventAggregationEngine.aggregateAnalytics(orgId, c.getId());
+            double delRate = agg.getKpis() != null ? agg.getKpis().getDeliveryRate() : 0.0;
+            double openRate = agg.getKpis() != null ? agg.getKpis().getOpenRate() : 0.0;
+            double clickRate = agg.getKpis() != null ? agg.getKpis().getClickRate() : 0.0;
+            double bounceRate = agg.getKpis() != null ? agg.getKpis().getBounceRate() : 0.0;
+            long totalRec = agg.getCampaignSummary() != null ? agg.getCampaignSummary().getTotalRecipients() : 0;
+            long sentCount = agg.getCampaignSummary() != null ? agg.getCampaignSummary().getSent() : 0;
+            long deliveredCount = agg.getCampaignSummary() != null ? agg.getCampaignSummary().getDelivered() : 0;
+            long failedCount = agg.getCampaignSummary() != null ? agg.getCampaignSummary().getFailed() : 0;
+
+            CampaignAnalyticsDto dto = CampaignAnalyticsDto.builder()
+                    .campaignId(c.getId())
+                    .campaignName(c.getName())
+                    .status(c.getStatus())
+                    .totalRecipients(totalRec)
+                    .sentCount(sentCount)
+                    .deliveredCount(deliveredCount)
+                    .failedCount(failedCount)
+                    .deliveryRate(delRate)
+                    .openRate(openRate)
+                    .clickRate(clickRate)
+                    .bounceRate(bounceRate)
+                    .build();
+            list.add(dto);
         }
 
         return list;

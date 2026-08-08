@@ -47,6 +47,8 @@ public class SecurityConfig {
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/forgot-password",
                                 "/api/v1/auth/reset-password",
+                                "/api/v2/webhooks/**",
+                                "/api/v1/webhooks/**",
                                 "/ws-connect/**",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**"

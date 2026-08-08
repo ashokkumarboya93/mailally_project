@@ -168,141 +168,104 @@ export const CampaignWizardPage = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 font-sans pb-12 animate-fadeInUp">
-      {/* ═══════════════════════════════════════════════ */}
-      {/* HERO BANNER (MATCHES EXECUTIVE DASHBOARD)       */}
-      {/* ═══════════════════════════════════════════════ */}
-      <div 
-        className="rounded-[28px] py-5 px-7 lg:py-5 lg:px-8 flex flex-col lg:flex-row items-center justify-between gap-6 relative overflow-hidden text-white border"
-        style={{
-          background: 'linear-gradient(135deg, #2563EB 0%, #3B82F6 60%, #60A5FA 100%)',
-          borderColor: 'rgba(255, 255, 255, 0.9)',
-          boxShadow: '0 0 0 1px rgba(15, 23, 42, 0.08), 0 15px 35px -10px rgba(37, 99, 235, 0.18)',
-        }}
-      >
-        {/* Soft Radial Glows */}
-        <div className="absolute top-[-80px] left-[-80px] w-96 h-96 rounded-full bg-white/20 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-[-80px] right-[-80px] w-96 h-96 rounded-full bg-white/10 blur-3xl pointer-events-none" />
-
-        {/* Left Column Content */}
-        <div className="space-y-3.5 max-w-sm relative z-10">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/15 text-white font-black text-[10px] border border-white/25 shadow-3xs backdrop-blur-md">
-            <Rocket className="w-3 h-3 text-[#00DDFF]" />
-            <span>Campaign Creation Wizard</span>
-          </div>
-
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight leading-none text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-            Campaign <br />
-            <span className="text-[#00DDFF]">Launch Studio</span>
-          </h1>
-
-          <p className="text-[10px] sm:text-[11px] text-blue-50 leading-relaxed font-medium">
-            Configure details, select audience segment, template, and review dispatch.
-          </p>
-        </div>
-
-        {/* Center Outreach Mail Icon Graphic (Custom PNG) */}
-        <div className="hidden xl:flex items-center justify-center relative z-10 px-2">
-          <img 
-            src="/envelope_outreach.png" 
-            alt="MailAlly Outreach Campaign Icon" 
-            className="w-36 h-auto object-contain max-h-32 select-none pointer-events-none drop-shadow-lg filter brightness-105" 
-          />
-        </div>
+    <div className="max-w-4xl mx-auto space-y-6 font-sans pb-8 animate-fadeInUp">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-extrabold tracking-tight text-[#0A0A0B]">Campaign Launch Studio</h1>
+        <p className="text-[13px] text-[#9CA3AF] font-medium mt-1">
+          Configure details, select audience segment, template, and review dispatch.
+        </p>
       </div>
 
       {error && (
-        <div className="p-4 rounded-2xl text-xs font-black bg-rose-50 text-rose-600 border border-rose-100 shadow-3xs">
+        <div className="p-3.5 rounded-xl text-[12px] font-semibold bg-[#FFE4E6] text-[#E11D48] border border-[#FECDD3]">
           {error}
         </div>
       )}
 
-      {/* Stepper Progress Card */}
-      <div className="bg-white rounded-[22px] p-5 border flex items-center justify-between shadow-xs" style={{ borderColor: 'rgba(37,99,235,0.08)' }}>
+      {/* Stepper */}
+      <div className="bg-white rounded-[16px] p-4 border border-[#E5E5E7] flex items-center justify-between">
         {[1, 2, 3, 4].map((s) => (
-          <div key={s} className="flex items-center space-x-2.5">
+          <div key={s} className="flex items-center gap-2">
             <div
-              className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black transition-all duration-300 border ${step >= s ? 'bg-[#2563EB] text-white border-transparent shadow-md shadow-blue-500/20' : 'bg-slate-100 text-slate-400 border-slate-200/60'}`}
+              className={`w-7 h-7 rounded-lg flex items-center justify-center text-[12px] font-bold transition-all duration-200 ${
+                step >= s ? 'bg-[#0A0A0B] text-white' : 'bg-[#F3F4F6] text-[#9CA3AF]'
+              }`}
             >
-              {step > s ? <Check className="w-4 h-4 text-white stroke-[3]" /> : s}
+              {step > s ? <Check className="w-3.5 h-3.5" /> : s}
             </div>
-            <span
-              className={`text-xs font-black hidden sm:inline ${step === s ? 'text-[#1E3A8A]' : 'text-slate-400'}`}
-              style={{ fontFamily: 'var(--font-heading)' }}
-            >
+            <span className={`text-[12px] font-semibold hidden sm:inline ${step === s ? 'text-[#0A0A0B]' : 'text-[#9CA3AF]'}`}>
               {s === 1 ? 'Setup' : s === 2 ? 'Audience' : s === 3 ? 'Template' : 'Review'}
             </span>
           </div>
         ))}
       </div>
 
-      {/* Step Content Card */}
-      <div className="bg-white rounded-[22px] p-6.5 space-y-5 border shadow-xs" style={{ borderColor: 'rgba(37,99,235,0.08)' }}>
+      {/* Step Content */}
+      <div className="bg-white rounded-[16px] p-6 space-y-5 border border-[#E5E5E7]">
         {step === 1 && (
           <div className="space-y-4">
-            <h3 className="font-black text-base text-[#1E3A8A]" style={{ fontFamily: 'var(--font-heading)' }}>Step 1: Campaign Setup</h3>
+            <h3 className="font-bold text-[15px] text-[#0A0A0B]">Step 1: Campaign Setup</h3>
             <div>
-              <label className="block text-xs font-black mb-1.5 uppercase tracking-wider text-slate-400">Campaign Name *</label>
+              <label className="ma-label">Campaign Name *</label>
               <input
                 type="text"
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="e.g. Q4 Black Friday Promo"
-                className="w-full p-3 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#2563EB] bg-white"
+                className="ma-input"
               />
             </div>
             <div>
-              <label className="block text-xs font-black mb-1.5 uppercase tracking-wider text-slate-400">Subject Line *</label>
+              <label className="ma-label">Subject Line *</label>
               <input
                 type="text"
                 required
                 value={formData.subject}
                 onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                 placeholder="e.g. Your weekly MailAlly update"
-                className="w-full p-3 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#2563EB] bg-white"
+                className="ma-input"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-black mb-1.5 uppercase tracking-wider text-slate-400">Sender Name *</label>
+                <label className="ma-label">Sender Name *</label>
                 <input
                   type="text"
                   value={formData.senderName}
                   onChange={(e) => setFormData({ ...formData, senderName: e.target.value })}
-                  className="w-full p-3 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#2563EB] bg-white"
+                  className="ma-input"
                 />
               </div>
               <div>
-                <label className="block text-xs font-black mb-1.5 uppercase tracking-wider text-slate-400">Sender Email *</label>
+                <label className="ma-label">Sender Email *</label>
                 <input
                   type="email"
                   value={formData.senderEmail}
                   onChange={(e) => setFormData({ ...formData, senderEmail: e.target.value })}
-                  className="w-full p-3 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#2563EB] bg-white"
+                  className="ma-input"
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-black mb-1.5 uppercase tracking-wider text-slate-400">Reply-To Email</label>
+                <label className="ma-label">Reply-To Email</label>
                 <input
                   type="email"
                   value={formData.replyTo}
                   onChange={(e) => setFormData({ ...formData, replyTo: e.target.value })}
                   placeholder={formData.senderEmail}
-                  className="w-full p-3 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#2563EB] bg-white"
+                  className="ma-input"
                 />
               </div>
               <div>
-                <label className="block text-xs font-black mb-1.5 uppercase tracking-wider text-slate-400">Batch Size *</label>
+                <label className="ma-label">Batch Size *</label>
                 <input
                   type="number"
-                  min="1"
-                  max="5000"
                   value={formData.batchSize}
                   onChange={(e) => setFormData({ ...formData, batchSize: e.target.value })}
-                  className="w-full p-3 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#2563EB] bg-white"
+                  className="ma-input"
                 />
               </div>
             </div>
@@ -311,125 +274,87 @@ export const CampaignWizardPage = () => {
 
         {step === 2 && (
           <div className="space-y-4">
-            <h3 className="font-black text-base text-[#1E3A8A]" style={{ fontFamily: 'var(--font-heading)' }}>Step 2: Audience Selection</h3>
-            <p className="text-xs text-slate-400 font-medium">Select the target segment and review the contacts that will receive this campaign.</p>
+            <h3 className="font-bold text-[15px] text-[#0A0A0B]">Step 2: Target Audience</h3>
             {loadingOptions ? (
-              <div className="p-4 rounded-xl text-xs font-semibold bg-blue-50/50 text-[#2563EB]">Loading audiences...</div>
-            ) : segments.length > 0 ? (
-              <div className="grid grid-cols-1 gap-3">
-                {segments.map((segment) => {
-                  const isSelected = String(formData.segmentId) === String(segment.id);
-                  return (
-                    <button
-                      key={segment.id}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, segmentId: segment.id })}
-                      className={`text-left p-4 rounded-2xl transition-all duration-200 cursor-pointer border ${isSelected ? 'border-2 border-[#2563EB] bg-blue-50/40 shadow-xs' : 'border-slate-200 bg-white hover:bg-slate-50/60'}`}
-                    >
-                      <span className="text-xs font-black block text-[#1E293B]" style={{ fontFamily: 'var(--font-heading)' }}>{segment.name}</span>
-                      <span className="text-[11px] text-slate-400 font-semibold block mt-0.5">
-                        {segment.contactCount ?? 0} contacts · {segment.type || 'SEGMENT'} · {segment.status || 'ACTIVE'}
-                      </span>
-                    </button>
-                  );
-                })}
+              <p className="text-[12px] text-[#9CA3AF]">Loading audience segments...</p>
+            ) : segments.length === 0 ? (
+              <div className="p-4 rounded-xl bg-[#FAFAFB] border border-[#E5E5E7] text-[12px] text-[#5F6368]">
+                No custom audience segments found. MailAlly will auto-target all active subscribers upon launch.
               </div>
             ) : (
-              <div className="p-4 rounded-2xl text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                No audience segment exists. The launch step will create an “All Active Subscribers” segment automatically.
-              </div>
-            )}
-
-            <div className="p-4 rounded-2xl space-y-2 bg-[#F7FAFF] border border-blue-100/60">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-[#1E3A8A]" style={{ fontFamily: 'var(--font-heading)' }}>Contact Preview</span>
-                <span className="text-[11px] text-slate-400 font-bold">{previewContacts.length} loaded</span>
-              </div>
-              <div className="max-h-48 overflow-y-auto space-y-1.5 pt-1">
-                {previewContacts.slice(0, 8).map((contact) => (
-                  <div key={contact.id || contact.email} className="flex items-center justify-between text-[11px] text-slate-600 font-semibold">
-                    <span>{[contact.firstName, contact.lastName].filter(Boolean).join(' ') || 'Contact'}</span>
-                    <span className="font-mono text-slate-400">{contact.email}</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {segments.map((seg) => (
+                  <div
+                    key={seg.id}
+                    onClick={() => setFormData({ ...formData, segmentId: seg.id })}
+                    className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                      String(formData.segmentId) === String(seg.id)
+                        ? 'border-[#0A0A0B] bg-[#FAFAFB]'
+                        : 'border-[#E5E5E7] hover:border-[#D1D5DB]'
+                    }`}
+                  >
+                    <h4 className="font-bold text-[14px] text-[#0A0A0B]">{seg.name}</h4>
+                    <p className="text-[12px] text-[#9CA3AF] mt-1">{seg.description || 'Audience segment'}</p>
                   </div>
                 ))}
-                {previewContacts.length === 0 && (
-                  <p className="text-[11px] text-slate-400 italic">No contacts preview available for this audience.</p>
-                )}
               </div>
-            </div>
+            )}
           </div>
         )}
 
         {step === 3 && (
           <div className="space-y-4">
-            <h3 className="font-black text-base text-[#1E3A8A]" style={{ fontFamily: 'var(--font-heading)' }}>Step 3: Select Template</h3>
-            {loadingOptions ? (
-              <div className="p-4 rounded-xl text-xs font-semibold bg-blue-50/50 text-[#2563EB]">Loading templates...</div>
-            ) : templates.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {templates.map((template) => {
-                  const isSelected = String(formData.templateId) === String(template.id);
-                  return (
-                    <button
-                      key={template.id}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, templateId: template.id, subject: formData.subject || template.subject || '' })}
-                      className={`text-left p-4 rounded-2xl transition-all duration-200 cursor-pointer border ${isSelected ? 'border-2 border-[#2563EB] bg-blue-50/40 shadow-xs' : 'border-slate-200 bg-white hover:bg-slate-50/60'}`}
-                    >
-                      <span className="text-xs font-black block text-[#1E293B]" style={{ fontFamily: 'var(--font-heading)' }}>{template.name}</span>
-                      <span className="text-[11px] block truncate text-slate-400 font-medium mt-0.5">{template.subject || 'No subject'}</span>
-                      <span className="text-[10px] text-slate-400 font-mono block mt-1">Template #{template.id} · v{template.version || 1}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="p-4 rounded-2xl text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200">
-                No email templates found. Create a template before launching a campaign.
-              </div>
-            )}
+            <h3 className="font-bold text-[15px] text-[#0A0A0B]">Step 3: Select Template</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {templates.map((tpl) => (
+                <div
+                  key={tpl.id}
+                  onClick={() => setFormData({ ...formData, templateId: tpl.id, subject: formData.subject || tpl.subject || '' })}
+                  className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                    String(formData.templateId) === String(tpl.id)
+                      ? 'border-[#0A0A0B] bg-[#FAFAFB]'
+                      : 'border-[#E5E5E7] hover:border-[#D1D5DB]'
+                  }`}
+                >
+                  <h4 className="font-bold text-[14px] text-[#0A0A0B]">{tpl.name}</h4>
+                  <p className="text-[12px] text-[#9CA3AF] mt-1 truncate">{tpl.subject || 'No subject'}</p>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
         {step === 4 && (
           <div className="space-y-4">
-            <h3 className="font-black text-base text-[#1E3A8A]" style={{ fontFamily: 'var(--font-heading)' }}>Step 4: Review & Finalize</h3>
-            <div className="p-5 rounded-2xl space-y-2.5 text-xs bg-blue-50/40 border border-blue-100 text-[#1E293B] font-semibold">
-              <p><strong className="text-[#2563EB]">Campaign Name:</strong> {formData.name || 'Untitled Campaign'}</p>
-              <p><strong className="text-[#2563EB]">Subject:</strong> {formData.subject || selectedTemplate?.subject || 'No subject'}</p>
-              <p><strong className="text-[#2563EB]">Sender:</strong> {formData.senderName} ({formData.senderEmail})</p>
-              <p><strong className="text-[#2563EB]">Target Segment:</strong> {selectedSegment?.name || 'All Active Subscribers'} ({selectedSegment?.contactCount ?? previewContacts.length} contacts)</p>
-              <p><strong className="text-[#2563EB]">Template:</strong> {selectedTemplate?.name || `Template ID ${formData.templateId}`}</p>
-              <p><strong className="text-[#2563EB]">Batch Size:</strong> {formData.batchSize}</p>
+            <h3 className="font-bold text-[15px] text-[#0A0A0B]">Step 4: Review & Dispatch</h3>
+            <div className="p-4 rounded-xl bg-[#FAFAFB] border border-[#E5E5E7] space-y-2 text-[13px]">
+              <p><strong>Name:</strong> {formData.name}</p>
+              <p><strong>Subject:</strong> {formData.subject}</p>
+              <p><strong>Sender:</strong> {formData.senderName} ({formData.senderEmail})</p>
+              <p><strong>Segment:</strong> {selectedSegment?.name || 'All Active Subscribers'}</p>
+              <p><strong>Template:</strong> {selectedTemplate?.name || 'Attached'}</p>
+              <p><strong>Batch Size:</strong> {formData.batchSize}</p>
             </div>
           </div>
         )}
 
-        {/* Wizard Controls */}
-        <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-          <button
-            onClick={handleBack}
-            disabled={step === 1}
-            className="px-5 py-2.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 text-xs font-black transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            Back
-          </button>
-          {step < 4 ? (
-            <button
-              onClick={handleNext}
-              className="px-6 py-2.5 rounded-full bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs font-black transition-all cursor-pointer shadow-md shadow-blue-500/20 flex items-center space-x-2"
-            >
-              <span>Next</span>
-              <ArrowRight className="w-4 h-4" />
+        {/* Buttons */}
+        <div className="flex items-center justify-between pt-4 border-t border-[#F0F0F2]">
+          {step > 1 ? (
+            <button onClick={handleBack} className="ma-btn ma-btn-secondary">
+              Back
             </button>
           ) : (
-            <button
-              onClick={handleSubmit}
-              disabled={submitting}
-              className="px-6 py-2.5 text-white font-black rounded-full text-xs shadow-md shadow-blue-500/25 bg-[#2563EB] hover:bg-[#1D4ED8] flex items-center space-x-2 transition-all cursor-pointer disabled:opacity-50"
-            >
-              <Send className="w-4 h-4" />
-              <span>{submitting ? 'Creating...' : 'Create & Launch'}</span>
+            <div />
+          )}
+
+          {step < 4 ? (
+            <button onClick={handleNext} className="ma-btn ma-btn-primary">
+              Next Step <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          ) : (
+            <button onClick={handleSubmit} disabled={submitting} className="ma-btn ma-btn-primary">
+              {submitting ? 'Launching...' : 'Launch Campaign'}
             </button>
           )}
         </div>

@@ -7,86 +7,9 @@ import { PageSkeletonLoader } from '../../components/common/PageSkeletonLoader';
 import { GoogleDrivePickerModal } from '../../components/contacts/GoogleDrivePickerModal';
 import { ImportHistoryModal } from '../../components/contacts/ImportHistoryModal';
 import { 
-  Plus, Search, Users, MapPin, Upload, Download, RefreshCw, Trash2, 
-  Tag, Shield, Play, RotateCcw, Copy, CheckSquare, Square, FileText, 
-  BarChart2, Filter, AlertTriangle, Layers, ArrowUpRight, Mail, User,
-  HardDrive, Check, Edit2, Edit3, Megaphone, Layout, Palette, Code, PenTool, Grid, FolderPlus, Eye, EyeOff, Save, X
+  Plus, Search, Users, Upload, Trash2, 
+  FileText, Layers, Edit3, Megaphone, Grid, HardDrive, Edit2, Save, X, ArrowLeft, ArrowRight, Zap
 } from 'lucide-react';
-
-const CARD_THEMES = [
-  {
-    bg: 'bg-[#E6F4FE]',
-    text: 'text-slate-900',
-    desc: 'text-slate-600',
-    tagBg: 'bg-[#D0E8FF]',
-    tagText: 'text-[#1e40af]'
-  },
-  {
-    bg: 'bg-[#FFEADA]',
-    text: 'text-slate-900',
-    desc: 'text-slate-600',
-    tagBg: 'bg-[#FFD3B5]',
-    tagText: 'text-[#9a3412]'
-  },
-  {
-    bg: 'bg-[#EBE3FC]',
-    text: 'text-slate-900',
-    desc: 'text-slate-600',
-    tagBg: 'bg-[#D6C7FB]',
-    tagText: 'text-[#5b21b6]'
-  },
-  {
-    bg: 'bg-[#DDF7EC]',
-    text: 'text-slate-900',
-    desc: 'text-slate-600',
-    tagBg: 'bg-[#BCEFD7]',
-    tagText: 'text-[#065f46]'
-  }
-];
-
-const CARD_ICONS = [Layout, Palette, Code, PenTool];
-
-const getCollectionDescription = (index) => {
-  const descriptions = [
-    "Crafts engaging, user-friendly websites.",
-    "Creates impactful visuals and branding.",
-    "Builds functional and scalable solutions.",
-    "Delivers persuasive and creative content."
-  ];
-  return descriptions[index % descriptions.length];
-};
-
-const getCollectionTags = (index) => {
-  const tagsList = [
-    ["Landing Page", "Website", "One Page"],
-    ["Packaging", "Brand Identity", "Logo"],
-    ["Web Applications", "Mobile Apps", "Database"],
-    ["Blog Posts", "Video Scripts", "Sales Pages"]
-  ];
-  return tagsList[index % tagsList.length];
-};
-
-const renderStatusTag = (status) => {
-  if (!status || status === 'COMPLETED' || status === 'SUCCESS') {
-    return (
-      <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-white text-emerald-700 border border-emerald-100 shadow-3xs">
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active
-      </span>
-    );
-  }
-  if (status === 'PROCESSING' || status === 'RUNNING') {
-    return (
-      <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-white text-amber-600 border border-amber-100 shadow-3xs">
-        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Processing
-      </span>
-    );
-  }
-  return (
-    <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-white text-rose-600 border border-rose-100 shadow-3xs">
-      <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Failed
-    </span>
-  );
-};
 
 export const ContactsPage = () => {
   const [contacts, setContacts] = useState([]);
@@ -146,9 +69,9 @@ export const ContactsPage = () => {
         setCollections(collRes.value.data);
       } else {
         setCollections([
-          { id: 101, name: 'Enterprise Customers', contactCount: 2458, subscribedCount: 2400, invalidCount: 42, duplicateCount: 16, sourceType: 'EXCEL', tag: 'Enterprise', colorCode: '#1F57F5', createdAt: new Date().toISOString() },
-          { id: 102, name: 'Healthcare Leads', contactCount: 1588, subscribedCount: 1550, invalidCount: 20, duplicateCount: 18, sourceType: 'CSV', tag: 'Healthcare', colorCode: '#10B981', createdAt: new Date().toISOString() },
-          { id: 103, name: 'July Marketing Leads', contactCount: 5280, subscribedCount: 5100, invalidCount: 120, duplicateCount: 60, sourceType: 'GOOGLE_DRIVE', tag: 'July', colorCode: '#8B5CF6', createdAt: new Date().toISOString() }
+          { id: 101, name: 'Enterprise Customers', contactCount: 2458, subscribedCount: 2400, invalidCount: 42, duplicateCount: 16, sourceType: 'EXCEL', tag: 'Enterprise', colorCode: '#EC4899', createdAt: new Date().toISOString() },
+          { id: 102, name: 'Healthcare Leads', contactCount: 1588, subscribedCount: 1550, invalidCount: 20, duplicateCount: 18, sourceType: 'CSV', tag: 'Healthcare', colorCode: '#22C55E', createdAt: new Date().toISOString() },
+          { id: 103, name: 'July Marketing Leads', contactCount: 5280, subscribedCount: 5100, invalidCount: 120, duplicateCount: 60, sourceType: 'GOOGLE_DRIVE', tag: 'July', colorCode: '#A855F7', createdAt: new Date().toISOString() }
         ]);
       }
 
@@ -362,208 +285,193 @@ export const ContactsPage = () => {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto text-slate-800 font-sans">
+    <div className="space-y-6 animate-fadeInUp pb-8 font-sans">
       
-      {/* Header Toolbar — Bright Ice Blue Theme Banner */}
-      <div 
-        className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-3xl text-white shadow-lg shadow-blue-500/10 relative overflow-hidden border border-blue-200"
-        style={{ background: 'linear-gradient(135deg, #1F57F5 0%, #2BAFF2 100%)' }}
-      >
-        <div className="relative z-10">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-extrabold tracking-tight text-white">Contact Workspace</h1>
-            <span className="text-xs px-3 py-0.5 rounded-full bg-white/20 text-white font-semibold backdrop-blur-md border border-white/30">
-              Enterprise Dynamic Engine
-            </span>
-          </div>
-          <p className="text-xs text-blue-100 mt-1">
-            Zero-schema dynamic columns • Google Drive OAuth stream • AIRTABLE grid inline editing
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-extrabold tracking-tight text-[#0A0A0B]">Contacts</h1>
+          <p className="text-[13px] text-[#9CA3AF] font-medium mt-1">
+            Manage contact lists, collections, and custom dynamic fields.
           </p>
         </div>
 
-        {/* Primary Action Group */}
-        <div className="flex flex-wrap items-center gap-3 relative z-10">
+        {/* Primary Action Buttons */}
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setIsImportModalOpen(true)}
-            className="px-4 py-2.5 bg-white text-blue-700 hover:bg-blue-50 font-bold text-sm rounded-xl flex items-center gap-2 shadow-md hover:scale-[1.02] transition-all"
+            className="ma-btn ma-btn-primary gap-1.5 text-[12px]"
           >
-            <Upload className="w-4 h-4 text-blue-600" /> + Upload File
+            <Upload className="w-3.5 h-3.5" /> Upload File
           </button>
-
           <button
             onClick={() => setIsDriveModalOpen(true)}
-            className="px-4 py-2.5 bg-blue-900/40 hover:bg-blue-900/60 text-white font-bold text-sm rounded-xl flex items-center gap-2 border border-white/20 backdrop-blur-md transition-all hover:scale-[1.02]"
+            className="ma-btn ma-btn-secondary gap-1.5 text-[12px]"
           >
-            <HardDrive className="w-4 h-4 text-cyan-300" /> + Import From Drive
+            <HardDrive className="w-3.5 h-3.5 text-[#9CA3AF]" /> Drive Import
           </button>
-
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white font-semibold text-sm rounded-xl flex items-center gap-2 border border-white/30 backdrop-blur-md transition-all"
+            className="ma-btn ma-btn-secondary gap-1.5 text-[12px]"
           >
-            <Plus className="w-4 h-4" /> + Add Contact
+            <Plus className="w-3.5 h-3.5 text-[#9CA3AF]" /> Add Contact
           </button>
         </div>
       </div>
 
-      {/* View Switcher & Secondary Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-1.5 bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm w-fit">
+      {/* View Switcher & Search Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-2 rounded-[16px] border border-[#E5E5E7]">
+        <div className="flex items-center gap-1">
           <button
             onClick={() => { setViewMode('CARDS'); setActiveCollectionId(null); }}
-            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
-              viewMode === 'CARDS' && !activeCollectionId ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'text-slate-600 hover:text-blue-600'
+            className={`px-3.5 py-1.5 rounded-lg text-[12px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+              viewMode === 'CARDS' && !activeCollectionId
+                ? 'bg-[#0A0A0B] text-white'
+                : 'text-[#5F6368] hover:bg-[#F9FAFB]'
             }`}
           >
-            <Layers className="w-3.5 h-3.5" /> Collection Cards ({collections.length})
+            <Layers className="w-3.5 h-3.5" /> Collections ({collections.length})
           </button>
           <button
             onClick={() => setViewMode('SPREADSHEET')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
-              viewMode === 'SPREADSHEET' || activeCollectionId ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'text-slate-600 hover:text-blue-600'
+            className={`px-3.5 py-1.5 rounded-lg text-[12px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+              viewMode === 'SPREADSHEET' || activeCollectionId
+                ? 'bg-[#0A0A0B] text-white'
+                : 'text-[#5F6368] hover:bg-[#F9FAFB]'
             }`}
           >
-            <Grid className="w-3.5 h-3.5" /> Spreadsheet Grid View
+            <Grid className="w-3.5 h-3.5" /> Grid View
           </button>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 sm:w-64">
+            <Search className="w-3.5 h-3.5 text-[#C0C5CC] absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search contacts, dynamic fields, tags..."
+              placeholder="Search contacts..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 pr-4 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 w-64 shadow-xs"
+              className="w-full pl-9 pr-3 h-8 text-[12px] font-medium bg-[#FAFAFB] border border-[#E5E5E7] rounded-lg outline-none focus:border-[#D1D5DB]"
             />
           </div>
 
           <button
             onClick={() => { loadHistory(); setIsHistoryModalOpen(true); }}
-            className="p-2 bg-white border border-slate-200 text-slate-700 hover:text-blue-600 rounded-xl text-xs flex items-center gap-1.5 hover:bg-blue-50 transition-colors shadow-xs"
+            className="p-1.5 rounded-lg border border-[#E5E5E7] bg-white text-[#9CA3AF] hover:text-[#0A0A0B] transition-colors cursor-pointer"
+            title="Import History"
           >
-            <FileText className="w-4 h-4 text-slate-400" /> History
+            <FileText className="w-4 h-4" />
           </button>
         </div>
       </div>
 
       {/* COLLECTION CARDS VIEW */}
       {viewMode === 'CARDS' && !activeCollectionId && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-extrabold text-slate-900 tracking-tight">Automated Collection Services ({collections.length})</h2>
+            <h2 className="text-[13px] font-semibold text-[#5F6368] uppercase tracking-wider">Collections</h2>
             <button
               onClick={() => setIsCreateCollectionOpen(true)}
-              className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1 font-bold transition-colors cursor-pointer"
+              className="text-[12px] font-semibold text-[#0A0A0B] hover:underline cursor-pointer"
             >
-              + New Custom Collection
+              + Custom Collection
             </button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {collections.map((coll, index) => {
-              const theme = CARD_THEMES[index % CARD_THEMES.length];
-              const IconComponent = CARD_ICONS[index % CARD_ICONS.length];
-              const desc = getCollectionDescription(index);
-              const tags = getCollectionTags(index);
-              const status = coll.status || 'COMPLETED';
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {collections.map((coll, idx) => {
+              const themes = [
+                {
+                  bg: 'bg-[#FFF0F5] border-[#FCE7F3]',
+                  iconBg: 'bg-white text-[#DB2777] border-[#FCE7F3]',
+                  pillBg: 'bg-[#FCE7F3] text-[#DB2777]',
+                  icon: Users
+                },
+                {
+                  bg: 'bg-[#F3E8FF] border-[#DDD6FE]',
+                  iconBg: 'bg-white text-[#7C3AED] border-[#DDD6FE]',
+                  pillBg: 'bg-[#DDD6FE] text-[#7C3AED]',
+                  icon: Layers
+                },
+                {
+                  bg: 'bg-[#ECFDF5] border-[#A7F3D0]',
+                  iconBg: 'bg-white text-[#059669] border-[#A7F3D0]',
+                  pillBg: 'bg-[#A7F3D0] text-[#047857]',
+                  icon: Zap
+                }
+              ];
+              const theme = themes[idx % themes.length];
+              const CardIcon = theme.icon;
 
               return (
                 <div
                   key={coll.id}
-                  className="bg-white border border-slate-200/80 rounded-3xl p-5 shadow-xs hover:shadow-md transition-all duration-300 flex flex-col justify-between h-[360px] relative group"
+                  className="bg-white border border-[#18181B] rounded-[26px] p-4 sm:p-5 flex flex-col justify-between hover:shadow-md transition-all duration-300 group cursor-pointer"
+                  onClick={() => { setActiveCollectionId(coll.id); setViewMode('SPREADSHEET'); }}
                 >
-                  {/* Top Colored Container */}
-                  <div className={`w-full flex-1 rounded-2xl ${theme.bg} p-5 flex flex-col justify-between transition-all duration-300 relative`}>
-                    <div>
-                      {/* Icon */}
-                      <div className="flex items-start justify-between">
-                        <div className="w-11 h-11 rounded-xl bg-white flex items-center justify-center shadow-3xs text-slate-800 flex-shrink-0">
-                          <IconComponent className="w-5.5 h-5.5" />
-                        </div>
-                        
-                        {/* Overlay glassmorphic delete button */}
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDeleteCollection(coll.id, coll.name); }}
-                          className="p-1.5 rounded-lg bg-white/30 hover:bg-white/60 text-slate-600 hover:text-rose-600 transition-all cursor-pointer flex items-center justify-center backdrop-blur-md border border-white/20 shadow-3xs opacity-0 group-hover:opacity-100"
-                          title="Delete Collection"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-
-                      {/* Title */}
-                      <h3 className="text-lg font-bold text-slate-900 mt-3.5 mb-1 truncate leading-tight">
+                  {/* Inner Tinted Container */}
+                  <div className={`${theme.bg} rounded-[20px] p-5 mb-4 border transition-colors`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="font-extrabold text-[18px] text-[#18181B] tracking-tight truncate leading-tight">
                         {coll.name.replace(/\.[^/.]+$/, "")}
                       </h3>
-
-                      {/* Description */}
-                      <p className="text-xs leading-relaxed text-slate-600">
-                        {desc}
-                      </p>
+                      <div className={`w-9 h-9 rounded-xl ${theme.iconBg} flex items-center justify-center flex-shrink-0 border shadow-2xs`}>
+                        <CardIcon className="w-4 h-4" strokeWidth={2} />
+                      </div>
                     </div>
 
-                    {/* Tag Pills */}
-                    <div className="flex flex-wrap gap-1.5 mt-3">
-                      {tags.map((tag, tIdx) => (
-                        <span key={tIdx} className={`px-2.5 py-0.5 rounded-md text-[11px] font-bold ${theme.tagBg} ${theme.tagText}`}>
-                          {tag}
-                        </span>
-                      ))}
-                      {renderStatusTag(status)}
+                    <p className="text-[12px] font-medium text-[#52525B] leading-relaxed mt-2.5 mb-4 line-clamp-2">
+                      Organized contact audience stream for targeted campaign delivery and real-time behavioral tracking.
+                    </p>
+
+                    {/* Pastel Tags Row */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      <span className={`px-3 py-1 rounded-full text-[11px] font-bold ${theme.pillBg}`}>
+                        {coll.sourceType || 'Excel'}
+                      </span>
+                      <span className={`px-3 py-1 rounded-full text-[11px] font-bold ${theme.pillBg}`}>
+                        {coll.contactCount || 0} Contacts
+                      </span>
+                      <span className={`px-3 py-1 rounded-full text-[11px] font-bold ${theme.pillBg}`}>
+                        {coll.subscribedCount || 0} Active
+                      </span>
                     </div>
                   </div>
 
-                  {/* Bottom Action Bar */}
-                  <div className="flex items-center justify-between pt-3 pb-0.5 px-1 gap-2">
-                    <div className="flex items-center gap-1.5">
-                      {/* Edit Button */}
+                  {/* Bottom Footer Action Row */}
+                  <div className="flex items-center justify-between px-1 pt-1">
+                    <span className="text-[13px] font-extrabold text-[#18181B] group-hover:underline">
+                      Explore audience
+                    </span>
+                    <div className="flex items-center gap-2">
                       <button
-                        onClick={() => {
-                          const newName = window.prompt("Rename collection:", coll.name);
-                          if (newName && newName.trim() !== '') {
-                            alert("Collection renamed successfully!");
-                          }
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedCampaignId('');
+                          setIsAddToCampaignOpen(coll.id);
                         }}
-                        className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-all cursor-pointer text-slate-600 flex items-center justify-center shadow-3xs"
-                        title="Edit Collection"
+                        className="p-2 rounded-full border border-[#18181B] text-[#18181B] hover:bg-[#18181B] hover:text-white transition-colors"
+                        title="Add to Campaign"
                       >
-                        <Edit3 className="w-3.5 h-3.5" />
+                        <Megaphone className="w-3.5 h-3.5" />
                       </button>
-
-                      {/* Campaign Button */}
                       <button
-                        onClick={() => { setSelectedCampaignId(''); setIsAddToCampaignOpen(coll.id); }}
-                        className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 rounded-xl hover:bg-slate-50 transition-all text-xs font-bold text-slate-700 cursor-pointer shadow-3xs bg-white"
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteCollection(coll.id, coll.name);
+                        }}
+                        className="p-2 rounded-full border border-rose-300 text-rose-600 hover:bg-rose-600 hover:text-white transition-colors"
+                        title="Delete Collection"
                       >
-                        <Megaphone className="w-3.5 h-3.5 text-slate-500" /> Campaign
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
+                      <div className="w-9 h-9 rounded-full border border-[#18181B] bg-white flex items-center justify-center text-[#18181B] group-hover:bg-[#18181B] group-hover:text-white transition-all shadow-xs">
+                        <ArrowRight className="w-4 h-4" />
+                      </div>
                     </div>
-
-                    {/* Action button */}
-                    {status === 'COMPLETED' || status === 'SUCCESS' ? (
-                      <button
-                        onClick={() => { setActiveCollectionId(coll.id); setViewMode('SPREADSHEET'); }}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold shadow-3xs hover:bg-blue-700 transition-all cursor-pointer"
-                      >
-                        View Details
-                      </button>
-                    ) : status === 'PROCESSING' || status === 'RUNNING' ? (
-                      <button
-                        onClick={() => { setActiveCollectionId(coll.id); setViewMode('SPREADSHEET'); }}
-                        className="px-4 py-2 border border-slate-200 bg-white text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all cursor-pointer shadow-3xs"
-                      >
-                        View Progress
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => alert('Viewing import errors logs...')}
-                        className="px-3.5 py-2 border border-rose-200 bg-rose-50/50 text-rose-600 rounded-xl text-xs font-bold hover:bg-rose-100/50 hover:border-rose-300 transition-all cursor-pointer flex items-center gap-1 shadow-3xs"
-                      >
-                        <AlertTriangle className="w-3.5 h-3.5" /> View Error
-                      </button>
-                    )}
                   </div>
                 </div>
               );
@@ -572,160 +480,131 @@ export const ContactsPage = () => {
         </div>
       )}
 
-      {/* SPREADSHEET GRID VIEW (AIRTABLE STYLE) */}
+      {/* SPREADSHEET GRID VIEW */}
       {(viewMode === 'SPREADSHEET' || activeCollectionId) && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {activeCollectionId && (
                 <button
                   onClick={() => setActiveCollectionId(null)}
-                  className="text-xs font-bold text-slate-600 hover:text-slate-900 bg-white px-3 py-1 rounded-xl border border-slate-200 shadow-xs"
+                  className="flex items-center gap-1 text-[12px] font-semibold text-[#5F6368] hover:text-[#0A0A0B] bg-white px-3 py-1 rounded-lg border border-[#E5E5E7] cursor-pointer"
                 >
-                  ← Back to Collections
+                  <ArrowLeft className="w-3.5 h-3.5" /> Back
                 </button>
               )}
-              <h3 className="text-sm font-bold text-slate-800">
-                {activeCollectionId ? 'Collection Contacts Grid' : 'All Contacts Spreadsheet'}
+              <h3 className="text-[14px] font-bold text-[#0A0A0B]">
+                {activeCollectionId ? 'Collection Grid' : 'All Contacts Grid'}
               </h3>
               {selectedIds.length > 0 && (
                 <div className="flex items-center gap-2 ml-2">
                   <button
                     onClick={() => setIsAddToCampaignOpen('SELECTED')}
-                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-xs cursor-pointer"
+                    className="px-2.5 py-1 bg-[#0A0A0B] text-white rounded-lg text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
                   >
-                    <Plus className="w-3.5 h-3.5" /> Add to Campaign ({selectedIds.length})
+                    <Plus className="w-3 h-3" /> Add to Campaign ({selectedIds.length})
                   </button>
                   <button
                     onClick={handleBulkDeleteContacts}
-                    className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-xs cursor-pointer"
+                    className="px-2.5 py-1 bg-[#FFE4E6] text-[#E11D48] rounded-lg text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
                   >
-                    <Trash2 className="w-3.5 h-3.5" /> Delete Selected ({selectedIds.length})
+                    <Trash2 className="w-3 h-3" /> Delete ({selectedIds.length})
                   </button>
                 </div>
               )}
             </div>
-            <span className="text-xs text-slate-500 font-medium">💡 Double click any cell to edit inline (Airtable style)</span>
+            <span className="text-[11px] text-[#9CA3AF] font-medium hidden sm:inline">Double click cell to edit inline</span>
           </div>
 
-          <div className="overflow-x-auto border border-slate-200 rounded-3xl bg-white shadow-sm">
-            <table className="w-full text-left border-collapse min-w-[900px]">
+          <div className="overflow-x-auto border border-[#E5E5E7] rounded-[16px] bg-white">
+            <table className="w-full text-left border-collapse min-w-[800px]">
               <thead>
-                <tr className="bg-slate-50 text-xs font-bold text-slate-600 uppercase tracking-wider border-b border-slate-200">
-                  <th className="p-4 w-10">
-                    <input type="checkbox" checked={selectedIds.length === contacts.length && contacts.length > 0} onChange={toggleSelectAll} className="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                <tr className="bg-[#FAFAFB] text-[11px] font-semibold text-[#9CA3AF] uppercase tracking-wider border-b border-[#E5E5E7]">
+                  <th className="p-3 w-10">
+                    <input type="checkbox" checked={selectedIds.length === contacts.length && contacts.length > 0} onChange={toggleSelectAll} className="rounded border-[#E5E5E7]" />
                   </th>
-                  <th className="py-3 px-4 font-bold text-slate-700">First Name</th>
-                  <th className="py-3 px-4 font-bold text-slate-700">Last Name</th>
-                  <th className="py-3 px-4 font-bold text-slate-700">Email</th>
-                  <th className="py-3 px-4 font-bold text-slate-700">Company</th>
-                  <th className="py-3 px-4 font-bold text-slate-700">City / Country</th>
-                  <th className="py-3 px-4 font-bold text-slate-700">Status</th>
-
-                  {/* Dynamic Column Headers parsed from Field Registry */}
+                  <th className="py-3 px-3">First Name</th>
+                  <th className="py-3 px-3">Last Name</th>
+                  <th className="py-3 px-3">Email</th>
+                  <th className="py-3 px-3">Company</th>
+                  <th className="py-3 px-3">Location</th>
+                  <th className="py-3 px-3">Status</th>
                   {dynamicFields.map(field => (
-                    <th key={field.id} className="py-3 px-4 text-blue-600 font-bold bg-blue-50/50 border-l border-slate-200">
-                      ✨ {field.displayName}
+                    <th key={field.id} className="py-3 px-3 text-[#EC4899]">
+                      {field.displayName}
                     </th>
                   ))}
-                  <th className="py-3 px-4 font-bold text-slate-700 text-right">Actions</th>
+                  <th className="py-3 px-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-sm text-slate-800">
+              <tbody className="divide-y divide-[#F0F0F2] text-[13px] text-[#0A0A0B]">
                 {contacts.map((c) => (
-                  <tr key={c.id} className="hover:bg-blue-50/30 transition-colors group">
-                    <td className="p-4">
-                      <input type="checkbox" checked={selectedIds.includes(c.id)} onChange={() => toggleSelectOne(c.id)} className="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                  <tr key={c.id} className="hover:bg-[#FAFAFB] transition-colors">
+                    <td className="p-3">
+                      <input type="checkbox" checked={selectedIds.includes(c.id)} onChange={() => toggleSelectOne(c.id)} className="rounded border-[#E5E5E7]" />
                     </td>
 
-                    {/* Standard Editable Field: First Name */}
                     <td 
                       onDoubleClick={() => { setEditingCell({ contactId: c.id, fieldName: 'firstName', isCustomField: false }); setEditValue(c.firstName || ''); }}
-                      className="py-3 px-4 font-semibold text-slate-900 cursor-pointer hover:bg-blue-50/60 rounded-lg"
+                      className="py-3 px-3 font-semibold cursor-pointer"
                     >
                       {editingCell?.contactId === c.id && editingCell?.fieldName === 'firstName' ? (
                         <div className="flex items-center gap-1">
-                          <input type="text" value={editValue} onChange={e => setEditValue(e.target.value)} className="px-2 py-1 text-xs bg-white border border-blue-500 rounded text-slate-900 font-medium" autoFocus />
-                          <button onClick={() => handleSaveInlineCell(c.id, 'firstName', false)} className="p-1 bg-emerald-600 text-white rounded"><Save className="w-3 h-3" /></button>
-                          <button onClick={() => setEditingCell(null)} className="p-1 bg-slate-200 text-slate-700 rounded"><X className="w-3 h-3" /></button>
+                          <input type="text" value={editValue} onChange={e => setEditValue(e.target.value)} className="px-2 py-0.5 text-xs border border-[#0A0A0B] rounded" autoFocus />
+                          <button onClick={() => handleSaveInlineCell(c.id, 'firstName', false)} className="p-1 bg-[#0A0A0B] text-white rounded"><Save className="w-3 h-3" /></button>
+                          <button onClick={() => setEditingCell(null)} className="p-1 bg-[#F3F4F6] text-[#5F6368] rounded"><X className="w-3 h-3" /></button>
                         </div>
                       ) : (
                         c.firstName || '-'
                       )}
                     </td>
 
-                    {/* Standard Editable Field: Last Name */}
                     <td 
                       onDoubleClick={() => { setEditingCell({ contactId: c.id, fieldName: 'lastName', isCustomField: false }); setEditValue(c.lastName || ''); }}
-                      className="py-3 px-4 cursor-pointer hover:bg-blue-50/60 rounded-lg font-medium"
+                      className="py-3 px-3 font-medium cursor-pointer"
                     >
                       {editingCell?.contactId === c.id && editingCell?.fieldName === 'lastName' ? (
                         <div className="flex items-center gap-1">
-                          <input type="text" value={editValue} onChange={e => setEditValue(e.target.value)} className="px-2 py-1 text-xs bg-white border border-blue-500 rounded text-slate-900 font-medium" autoFocus />
-                          <button onClick={() => handleSaveInlineCell(c.id, 'lastName', false)} className="p-1 bg-emerald-600 text-white rounded"><Save className="w-3 h-3" /></button>
+                          <input type="text" value={editValue} onChange={e => setEditValue(e.target.value)} className="px-2 py-0.5 text-xs border border-[#0A0A0B] rounded" autoFocus />
+                          <button onClick={() => handleSaveInlineCell(c.id, 'lastName', false)} className="p-1 bg-[#0A0A0B] text-white rounded"><Save className="w-3 h-3" /></button>
                         </div>
                       ) : (
                         c.lastName || '-'
                       )}
                     </td>
 
-                    {/* Email */}
-                    <td className="py-3 px-4 font-mono text-xs text-slate-700 font-medium">{c.email}</td>
+                    <td className="py-3 px-3 font-mono text-[12px] text-[#5F6368]">{c.email}</td>
 
-                    {/* Company */}
-                    <td 
-                      onDoubleClick={() => { setEditingCell({ contactId: c.id, fieldName: 'company', isCustomField: false }); setEditValue(c.company || ''); }}
-                      className="py-3 px-4 cursor-pointer hover:bg-blue-50/60 rounded-lg text-slate-700 font-medium"
-                    >
-                      {editingCell?.contactId === c.id && editingCell?.fieldName === 'company' ? (
-                        <div className="flex items-center gap-1">
-                          <input type="text" value={editValue} onChange={e => setEditValue(e.target.value)} className="px-2 py-1 text-xs bg-white border border-blue-500 rounded text-slate-900 font-medium" autoFocus />
-                          <button onClick={() => handleSaveInlineCell(c.id, 'company', false)} className="p-1 bg-emerald-600 text-white rounded"><Save className="w-3 h-3" /></button>
-                        </div>
-                      ) : (
-                        c.company || '-'
-                      )}
-                    </td>
+                    <td className="py-3 px-3 font-medium text-[#5F6368]">{c.company || '-'}</td>
+                    <td className="py-3 px-3 text-[#9CA3AF] text-[12px] font-medium">{c.city || ''} {c.country ? `(${c.country})` : ''}</td>
 
-                    {/* City / Country */}
-                    <td className="py-3 px-4 text-slate-500 text-xs font-medium">{c.city || ''} {c.country ? `(${c.country})` : ''}</td>
-
-                    {/* Status */}
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-3">
                       <StatusBadge status={c.status || 'SUBSCRIBED'} />
                     </td>
 
-                    {/* Dynamic Custom Columns */}
                     {dynamicFields.map(field => (
                       <td
                         key={field.id}
                         onDoubleClick={() => { setEditingCell({ contactId: c.id, fieldName: field.fieldKey, isCustomField: true }); setEditValue(parseCustomFieldValue(c, field.fieldKey)); }}
-                        className="py-3 px-4 border-l border-slate-200 cursor-pointer hover:bg-blue-100/50 text-blue-700 font-mono text-xs font-medium"
+                        className="py-3 px-3 font-mono text-[12px] text-[#EC4899] font-medium cursor-pointer"
                       >
-                        {editingCell?.contactId === c.id && editingCell?.fieldName === field.fieldKey ? (
-                          <div className="flex items-center gap-1">
-                            <input type="text" value={editValue} onChange={e => setEditValue(e.target.value)} className="px-2 py-1 text-xs bg-white border border-blue-500 rounded text-slate-900 font-medium" autoFocus />
-                            <button onClick={() => handleSaveInlineCell(c.id, field.fieldKey, true)} className="p-1 bg-emerald-600 text-white rounded"><Save className="w-3 h-3" /></button>
-                          </div>
-                        ) : (
-                          parseCustomFieldValue(c, field.fieldKey)
-                        )}
+                        {parseCustomFieldValue(c, field.fieldKey)}
                       </td>
                     ))}
 
-                    <td className="py-3 px-4 text-right">
+                    <td className="py-3 px-3 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => handleOpenEditModal(c)}
-                          className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-slate-200"
-                          title="Edit Contact Details"
+                          className="p-1 text-[#9CA3AF] hover:text-[#0A0A0B] cursor-pointer"
+                          title="Edit"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => handleDeleteSingleContact(c.id)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-slate-200"
-                          title="Delete Contact"
+                          className="p-1 text-[#9CA3AF] hover:text-[#E11D48] cursor-pointer"
+                          title="Delete"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -759,23 +638,23 @@ export const ContactsPage = () => {
       />
 
       {/* Standard File Upload Modal */}
-      <Modal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} title="Upload Excel / CSV File">
+      <Modal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} title="Upload File">
         <form onSubmit={handleStartImport} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-2">Select File (.xlsx or .csv)</label>
+            <label className="ma-label">Select File (.xlsx or .csv)</label>
             <input
               type="file"
               accept=".csv,.xlsx"
               onChange={(e) => setImportFile(e.target.files[0])}
-              className="w-full text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200"
+              className="ma-input p-2"
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-2">Duplicate Strategy</label>
+            <label className="ma-label">Duplicate Strategy</label>
             <select
               value={duplicateStrategy}
               onChange={(e) => setDuplicateStrategy(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 font-medium"
+              className="ma-select"
             >
               <option value="SKIP">Skip Duplicates</option>
               <option value="UPDATE">Update Existing</option>
@@ -784,25 +663,23 @@ export const ContactsPage = () => {
           <button
             type="submit"
             disabled={importing}
-            className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl shadow-md"
+            className="ma-btn ma-btn-primary w-full"
           >
-            {importing ? 'Importing File...' : 'Start Immediate Import'}
+            {importing ? 'Importing File...' : 'Start Import'}
           </button>
         </form>
       </Modal>
 
       {/* Attach Collection To Campaign Modal */}
-      <Modal isOpen={!!isAddToCampaignOpen} onClose={() => setIsAddToCampaignOpen(false)} title={isAddToCampaignOpen === 'SELECTED' ? `Add ${selectedIds.length} Selected Contacts to Campaign` : "Attach Collection Card to Campaign"}>
+      <Modal isOpen={!!isAddToCampaignOpen} onClose={() => setIsAddToCampaignOpen(false)} title="Add Contacts to Campaign">
         <div className="space-y-4">
-          <p className="text-xs text-slate-600">
-            {isAddToCampaignOpen === 'SELECTED'
-              ? `Select target campaign to attach these ${selectedIds.length} selected contacts:`
-              : "Select target campaign to map all collection recipients:"}
+          <p className="text-[13px] text-[#5F6368] font-medium">
+            Select target campaign for contacts:
           </p>
           <select
             value={selectedCampaignId}
             onChange={(e) => setSelectedCampaignId(e.target.value)}
-            className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-800 font-medium"
+            className="ma-select"
           >
             <option value="">Select Campaign...</option>
             {campaigns.map(c => (
@@ -813,116 +690,84 @@ export const ContactsPage = () => {
           <button
             onClick={() => handleAddCollectionToCampaign(isAddToCampaignOpen)}
             disabled={!selectedCampaignId}
-            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow-md disabled:opacity-50"
+            className="ma-btn ma-btn-primary w-full"
           >
-            Confirm & Attach Recipients
+            Confirm & Attach
           </button>
         </div>
       </Modal>
 
       {/* Edit Contact Modal */}
       {isEditModalOpen && editingContact && (
-        <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Contact Details">
+        <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Contact">
           <form onSubmit={handleSaveContactEdit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">First Name</label>
+                <label className="ma-label">First Name</label>
                 <input
                   type="text"
                   value={editingContact.firstName}
                   onChange={e => setEditingContact({ ...editingContact, firstName: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 font-medium"
+                  className="ma-input"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Last Name</label>
+                <label className="ma-label">Last Name</label>
                 <input
                   type="text"
                   value={editingContact.lastName}
                   onChange={e => setEditingContact({ ...editingContact, lastName: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 font-medium"
+                  className="ma-input"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
+              <label className="ma-label">Email Address</label>
               <input
                 type="email"
                 required
                 value={editingContact.email}
                 onChange={e => setEditingContact({ ...editingContact, email: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 font-medium"
+                className="ma-input"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Phone</label>
-                <input
-                  type="text"
-                  value={editingContact.phone}
-                  onChange={e => setEditingContact({ ...editingContact, phone: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 font-medium"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Company</label>
+                <label className="ma-label">Company</label>
                 <input
                   type="text"
                   value={editingContact.company}
                   onChange={e => setEditingContact({ ...editingContact, company: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 font-medium"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">City</label>
-                <input
-                  type="text"
-                  value={editingContact.city}
-                  onChange={e => setEditingContact({ ...editingContact, city: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 font-medium"
+                  className="ma-input"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Country</label>
-                <input
-                  type="text"
-                  value={editingContact.country}
-                  onChange={e => setEditingContact({ ...editingContact, country: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 font-medium"
-                />
+                <label className="ma-label">Status</label>
+                <select
+                  value={editingContact.status}
+                  onChange={e => setEditingContact({ ...editingContact, status: e.target.value })}
+                  className="ma-select"
+                >
+                  <option value="SUBSCRIBED">SUBSCRIBED</option>
+                  <option value="UNSUBSCRIBED">UNSUBSCRIBED</option>
+                  <option value="BOUNCED">BOUNCED</option>
+                </select>
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Status</label>
-              <select
-                value={editingContact.status}
-                onChange={e => setEditingContact({ ...editingContact, status: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 font-medium"
-              >
-                <option value="SUBSCRIBED">SUBSCRIBED</option>
-                <option value="UNSUBSCRIBED">UNSUBSCRIBED</option>
-                <option value="BOUNCED">BOUNCED</option>
-                <option value="COMPLAINED">COMPLAINED</option>
-              </select>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+            <div className="flex justify-end gap-2 pt-3 border-t border-[#F0F0F2]">
               <button
                 type="button"
                 onClick={() => setIsEditModalOpen(false)}
-                className="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 cursor-pointer"
+                className="ma-btn ma-btn-secondary"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 text-xs font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-md shadow-blue-500/20 cursor-pointer"
+                className="ma-btn ma-btn-primary"
               >
                 Save Changes
               </button>

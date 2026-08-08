@@ -1,39 +1,41 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { AlertCircle, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Home } from 'lucide-react';
 
 export const NotFoundPage = () => {
+  const navigate = useNavigate();
+
   return (
-    <div
-      className="min-h-screen flex items-center justify-center p-4 transition-colors duration-300"
-      style={{ backgroundColor: 'var(--claude-bg)' }}
-    >
-      <div className="text-center max-w-md space-y-5 animate-scaleIn">
-        <div
-          className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto shadow-lg"
-          style={{ backgroundColor: 'var(--claude-primary-soft)', color: 'var(--claude-primary)' }}
-        >
-          <AlertCircle className="w-10 h-10" />
-        </div>
-        <h1
-          className="text-6xl font-extrabold tracking-tight"
-          style={{ color: 'var(--claude-primary)', fontFamily: 'var(--font-heading)' }}
-        >
+    <div className="min-h-screen flex items-center justify-center bg-[#FCFCFD] px-6">
+      <div className="text-center max-w-md animate-fadeInUp">
+        {/* 404 Number */}
+        <div className="text-[120px] font-extrabold leading-none tracking-tighter text-[#E5E5E7] select-none">
           404
+        </div>
+
+        <h1 className="text-2xl font-extrabold text-[#0A0A0B] tracking-tight mt-2">
+          Page not found
         </h1>
-        <h2 className="text-xl font-bold" style={{ color: 'var(--claude-text)', fontFamily: 'var(--font-heading)' }}>
-          Page Not Found
-        </h2>
-        <p className="text-xs leading-relaxed" style={{ color: 'var(--claude-text-muted)' }}>
-          The requested page route does not exist or has been relocated within the workspace.
+        <p className="text-[14px] text-[#9CA3AF] font-medium mt-2 leading-relaxed">
+          The page you're looking for doesn't exist or has been moved.
         </p>
-        <Link
-          to="/dashboard"
-          className="claude-btn-primary inline-flex py-3.5 px-6 mt-2"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Return to Dashboard</span>
-        </Link>
+
+        <div className="flex items-center justify-center gap-3 mt-6">
+          <button
+            onClick={() => navigate(-1)}
+            className="ma-btn ma-btn-secondary gap-1.5"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Go Back
+          </button>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="ma-btn ma-btn-primary gap-1.5"
+          >
+            <Home className="w-4 h-4" />
+            Dashboard
+          </button>
+        </div>
       </div>
     </div>
   );

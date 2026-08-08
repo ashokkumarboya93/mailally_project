@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Repository interface for V2 CampaignRecipientLog entity database operations.
@@ -15,4 +16,11 @@ public interface CampaignRecipientLogRepository extends JpaRepository<CampaignRe
     List<CampaignRecipientLog> findByCampaignIdAndStatus(Long campaignId, String status);
     long countByCampaignId(Long campaignId);
     long countByCampaignIdAndStatus(Long campaignId, String status);
+
+    Optional<CampaignRecipientLog> findFirstByProviderMessageId(String providerMessageId);
+    Optional<CampaignRecipientLog> findFirstByProviderMessageIdContaining(String providerMessageIdPart);
+    Optional<CampaignRecipientLog> findFirstByEmailOrderByCreatedAtDesc(String email);
+    Optional<CampaignRecipientLog> findFirstByEmailIgnoreCaseOrderByCreatedAtDesc(String email);
+    Optional<CampaignRecipientLog> findFirstByCampaignOrganizationIdAndEmailIgnoreCaseOrderByCreatedAtDesc(Long organizationId, String email);
+    List<CampaignRecipientLog> findByCampaignOrganizationId(Long organizationId);
 }

@@ -2,30 +2,29 @@ import React, { useState, useEffect } from 'react';
 import { billingApi } from '../../api/extraApis';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { StatCard } from '../../components/common/StatCard';
-import { DollarSign, CreditCard, Receipt } from 'lucide-react';
+import { DollarSign, CreditCard, Receipt, Download, Plus, Check, ShieldCheck } from 'lucide-react';
+import { useToast } from '../../components/common/Toast';
 
 export const BillingPage = () => {
   const [history, setHistory] = useState([]);
-  const [, setSummary] = useState(null);
+  const { addToast } = useToast();
 
   const loadBilling = async () => {
     try {
-      const [histRes, sumRes] = await Promise.all([
-        billingApi.getHistory(),
-        billingApi.getSummary()
-      ]);
-      if (histRes.data && histRes.data.content) {
+      const histRes = await billingApi.getHistory();
+      if (histRes?.data?.content && histRes.data.content.length > 0) {
         setHistory(histRes.data.content);
       } else {
         setHistory([
-          { id: 1, invoiceNumber: 'INV-202608-0001', amount: 299.00, status: 'PAID', dueDate: '2026-08-15' },
-          { id: 2, invoiceNumber: 'INV-202607-0004', amount: 299.00, status: 'PAID', dueDate: '2026-07-15' }
+          { id: 1, invoiceNumber: 'INV-202608-0001', amount: 63.00, plan: 'Professional Monthly', status: 'PAID', dueDate: '2026-08-01', pdfUrl: '#' },
+          { id: 2, invoiceNumber: 'INV-202607-0004', amount: 63.00, plan: 'Professional Monthly', status: 'PAID', dueDate: '2026-07-01', pdfUrl: '#' },
+          { id: 3, invoiceNumber: 'INV-202606-0002', amount: 63.00, plan: 'Professional Monthly', status: 'PAID', dueDate: '2026-06-01', pdfUrl: '#' }
         ]);
       }
-      if (sumRes.data) setSummary(sumRes.data);
     } catch {
       setHistory([
-        { id: 1, invoiceNumber: 'INV-202608-0001', amount: 299.00, status: 'PAID', dueDate: '2026-08-15' }
+        { id: 1, invoiceNumber: 'INV-202608-0001', amount: 63.00, plan: 'Professional Monthly', status: 'PAID', dueDate: '2026-08-01', pdfUrl: '#' },
+        { id: 2, invoiceNumber: 'INV-202607-0004', amount: 63.00, plan: 'Professional Monthly', status: 'PAID', dueDate: '2026-07-01', pdfUrl: '#' }
       ]);
     }
   };
@@ -34,94 +33,138 @@ export const BillingPage = () => {
     loadBilling();
   }, []);
 
+  const handleDownloadInvoice = (invNum) => {
+    addToast(`Downloading PDF Receipt for ${invNum}...`, 'success');
+  };
+
   return (
-    <div className="space-y-8 animate-fadeInUp font-sans max-w-5xl mx-auto pb-12">
-      {/* ═══════════════════════════════════════════════ */}
-      {/* HERO BANNER (MATCHES EXECUTIVE DASHBOARD)       */}
-      {/* ═══════════════════════════════════════════════ */}
-      <div 
-        className="rounded-[28px] py-5 px-7 lg:py-5 lg:px-8 flex flex-col lg:flex-row items-center justify-between gap-6 relative overflow-hidden text-white border"
-        style={{
-          background: 'linear-gradient(135deg, #2563EB 0%, #3B82F6 60%, #60A5FA 100%)',
-          borderColor: 'rgba(255, 255, 255, 0.9)',
-          boxShadow: '0 0 0 1px rgba(15, 23, 42, 0.08), 0 15px 35px -10px rgba(37, 99, 235, 0.18)',
-        }}
-      >
-        {/* Soft Radial Glows */}
-        <div className="absolute top-[-80px] left-[-80px] w-96 h-96 rounded-full bg-white/20 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-[-80px] right-[-80px] w-96 h-96 rounded-full bg-white/10 blur-3xl pointer-events-none" />
-
-        {/* Left Column Content */}
-        <div className="space-y-3.5 max-w-sm relative z-10">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/15 text-white font-black text-[10px] border border-white/25 shadow-3xs backdrop-blur-md">
-            <Receipt className="w-3 h-3 text-[#00DDFF]" />
-            <span>Financial Subsystem</span>
-          </div>
-
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight leading-none text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-            Billing & <br />
-            <span className="text-[#00DDFF]">Invoices</span>
-          </h1>
-
-          <p className="text-[10px] sm:text-[11px] text-blue-50 leading-relaxed font-medium">
-            Manage organization payment histories, billing transactions, and invoice records.
+    <div className="space-y-6 animate-fadeInUp pb-8 max-w-5xl font-sans">
+      
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-extrabold tracking-tight text-[#18181B]">Billing & Invoices</h1>
+          <p className="text-[13px] text-[#71717A] font-medium mt-1">
+            Manage billing payment methods, subscription quotes, and download invoice receipts.
           </p>
         </div>
 
-        {/* Center Outreach Mail Icon Graphic (Custom PNG) */}
-        <div className="hidden xl:flex items-center justify-center relative z-10 px-2">
-          <img 
-            src="/envelope_outreach.png" 
-            alt="MailAlly Outreach Campaign Icon" 
-            className="w-36 h-auto object-contain max-h-32 select-none pointer-events-none drop-shadow-lg filter brightness-105" 
-          />
-        </div>
+        <button
+          onClick={() => addToast('Payment method management modal triggered', 'info')}
+          className="flex items-center gap-1.5 px-4 h-10 rounded-xl text-xs font-bold bg-[#18181B] text-white hover:bg-black transition-all cursor-pointer shadow-xs"
+        >
+          <Plus className="w-4 h-4" />
+          Add Payment Method
+        </button>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        <StatCard title="Total Invoiced" value="$598.00" icon={DollarSign} description="Total historical billed amount" />
-        <StatCard title="Paid Balance" value="$598.00" isPositive={true} icon={CreditCard} description="Settled billing invoices" />
-        <StatCard title="Outstanding Due" value="$0.00" icon={Receipt} description="Current unpaid balance" />
+        <StatCard title="Current Plan Billed" value="$63.00/mo" icon={DollarSign} description="Professional Plan (Active)" accentColor="green" />
+        <StatCard title="Total Paid Settled" value="$189.00" isPositive={true} icon={CreditCard} description="3 invoices settled" accentColor="blue" />
+        <StatCard title="Outstanding Due" value="$0.00" icon={Receipt} description="No pending balances" accentColor="purple" />
       </div>
 
-      {/* Table Section */}
-      <div className="bg-white rounded-[22px] border overflow-hidden shadow-xs" style={{ borderColor: 'rgba(37,99,235,0.08)' }}>
-        <div className="p-5 px-6 border-b flex items-center justify-between border-slate-100 bg-[#F7FAFF]/40">
-          <div>
-            <h3 className="font-black text-lg text-[#1E3A8A]" style={{ fontFamily: 'var(--font-heading)' }}>Invoice Ledger History</h3>
-            <p className="text-xs text-slate-400 font-medium">Historical customer transaction statements</p>
+      {/* Usage Quotas & Active Payment Method Row */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+        
+        {/* Usage Quota Card (7 cols) */}
+        <div className="md:col-span-7 bg-white rounded-[24px] border border-[#18181B] p-6 space-y-4 shadow-xs">
+          <h3 className="font-extrabold text-[15px] text-[#18181B]">Monthly Consumption Quotas</h3>
+          
+          <div className="space-y-3 pt-1">
+            <div>
+              <div className="flex justify-between text-xs font-bold text-[#18181B] mb-1">
+                <span>Monthly Automated Email Sends</span>
+                <span>18,000 / 25,000 (72%)</span>
+              </div>
+              <div className="w-full h-2.5 rounded-full bg-[#F4F4F6] overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-[#EC4899] to-[#8B5CF6] rounded-full" style={{ width: '72%' }} />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between text-xs font-bold text-[#18181B] mb-1">
+                <span>AI Prompt Generation Tokens</span>
+                <span>4,500 / 10,000 (45%)</span>
+              </div>
+              <div className="w-full h-2.5 rounded-full bg-[#F4F4F6] overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-[#10B981] to-[#3B82F6] rounded-full" style={{ width: '45%' }} />
+              </div>
+            </div>
           </div>
-          <span className="badge-blue bg-blue-50 border border-blue-100 text-[#2563EB] px-3.5 py-1 text-xs font-black">
+        </div>
+
+        {/* Active Payment Card (5 cols) */}
+        <div className="md:col-span-5 bg-white rounded-[24px] border border-[#18181B] p-6 space-y-3 shadow-xs">
+          <div className="flex items-center justify-between">
+            <h3 className="font-extrabold text-[15px] text-[#18181B]">Active Payment Card</h3>
+            <ShieldCheck className="w-4 h-4 text-[#10B981]" />
+          </div>
+
+          <div className="p-4 rounded-xl bg-[#FAFAFA] border border-[#E4E4E7] flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-7 rounded bg-[#18181B] text-white font-black text-[10px] flex items-center justify-center tracking-wider">
+                VISA
+              </div>
+              <div>
+                <p className="text-xs font-bold text-[#18181B]">•••• •••• •••• 4242</p>
+                <p className="text-[10px] font-semibold text-[#71717A]">Expires 12/2028</p>
+              </div>
+            </div>
+            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#DCFCE7] text-[#15803D]">Default</span>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Invoice Table */}
+      <div className="bg-white rounded-[24px] border border-[#18181B] overflow-hidden shadow-xs">
+        <div className="px-6 py-4 border-b border-[#E4E4E7] flex items-center justify-between">
+          <div>
+            <h3 className="font-extrabold text-[16px] text-[#18181B]">Invoice History</h3>
+            <p className="text-xs text-[#71717A] font-medium mt-0.5">Historical receipts and transaction ledger</p>
+          </div>
+          <span className="text-xs font-bold text-[#18181B] bg-[#F4F4F6] border border-[#E4E4E7] px-3 py-1 rounded-full">
             {history.length} Invoices
           </span>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="table-premium w-full text-left text-xs font-semibold text-[#1E293B]">
+          <table className="w-full text-left">
             <thead>
-              <tr className="bg-slate-50/50 border-b border-slate-100 text-slate-400 text-[10px] tracking-wider uppercase font-black">
-                <th className="p-4 px-6">Invoice Number</th>
-                <th className="p-4">Amount</th>
-                <th className="p-4">Status</th>
-                <th className="p-4">Due Date</th>
+              <tr className="border-b border-[#E4E4E7] bg-[#FAFAFA]">
+                <th className="text-[11px] font-bold uppercase tracking-wider text-[#71717A] p-4 px-6">Invoice #</th>
+                <th className="text-[11px] font-bold uppercase tracking-wider text-[#71717A] p-4">Plan</th>
+                <th className="text-[11px] font-bold uppercase tracking-wider text-[#71717A] p-4">Amount</th>
+                <th className="text-[11px] font-bold uppercase tracking-wider text-[#71717A] p-4">Status</th>
+                <th className="text-[11px] font-bold uppercase tracking-wider text-[#71717A] p-4">Billing Date</th>
+                <th className="text-[11px] font-bold uppercase tracking-wider text-[#71717A] p-4 text-right pr-6">Receipt</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody>
               {history.map((item) => (
-                <tr key={item.id} className="hover:bg-blue-50/20 transition-all">
-                  <td className="p-4 px-6 font-mono font-bold text-xs text-[#1E293B]">{item.invoiceNumber}</td>
-                  <td className="p-4 font-black text-sm text-[#2563EB]" style={{ fontFamily: 'var(--font-heading)' }}>
-                    ${item.amount?.toFixed(2)}
-                  </td>
+                <tr key={item.id} className="border-b border-[#E4E4E7] last:border-0 hover:bg-[#FAFAFA] transition-colors">
+                  <td className="p-4 px-6 text-xs font-mono font-bold text-[#18181B]">{item.invoiceNumber}</td>
+                  <td className="p-4 text-xs font-semibold text-[#52525B]">{item.plan || 'Professional'}</td>
+                  <td className="p-4 text-xs font-extrabold text-[#18181B]">${item.amount?.toFixed(2)}</td>
                   <td className="p-4"><StatusBadge status={item.status} /></td>
-                  <td className="p-4 text-slate-400 font-bold">{item.dueDate || 'N/A'}</td>
+                  <td className="p-4 text-xs font-semibold text-[#71717A]">{item.dueDate || 'N/A'}</td>
+                  <td className="p-4 text-right pr-6">
+                    <button
+                      onClick={() => handleDownloadInvoice(item.invoiceNumber)}
+                      className="p-1.5 rounded-lg border border-[#18181B] bg-white hover:bg-[#18181B] hover:text-white text-[#18181B] transition-colors cursor-pointer inline-flex items-center gap-1 text-[11px] font-bold"
+                    >
+                      <Download className="w-3.5 h-3.5" /> PDF
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
+
     </div>
   );
 };

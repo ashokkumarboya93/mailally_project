@@ -57,6 +57,7 @@ export const AppRoutes = () => {
         <Route path="campaigns" element={<CampaignsPage />} />
         <Route path="campaigns/wizard" element={<CampaignWizardPage />} />
         <Route path="campaigns/:id/analytics" element={<CampaignAnalyticsPage />} />
+        <Route path="analytics/campaigns/:id" element={<CampaignAnalyticsPage />} />
         <Route path="scheduler" element={<SchedulerPage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
         <Route path="notifications" element={<NotificationsPage />} />

@@ -21,6 +21,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -36,9 +37,29 @@ import java.util.List;
 public class AnalyticsController {
 
     private final AnalyticsService analyticsService;
+    private final com.mailally.email.repository.EmailEventRepository emailEventRepository;
+    private final com.mailally.email.repository.CampaignRecipientLogRepository recipientLogRepository;
+    private final com.mailally.campaign.repository.CampaignRepository campaignRepository;
 
-    public AnalyticsController(AnalyticsService analyticsService) {
+    public AnalyticsController(AnalyticsService analyticsService,
+                               com.mailally.email.repository.EmailEventRepository emailEventRepository,
+                               com.mailally.email.repository.CampaignRecipientLogRepository recipientLogRepository,
+                               com.mailally.campaign.repository.CampaignRepository campaignRepository) {
         this.analyticsService = analyticsService;
+        this.emailEventRepository = emailEventRepository;
+        this.recipientLogRepository = recipientLogRepository;
+        this.campaignRepository = campaignRepository;
+    }
+
+    @GetMapping("/v1-dashboard")
+    public ResponseEntity<ApiResponse<com.mailally.analytics.dto.AnalyticsV1Dto>> getAnalyticsV1(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Long campaignId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dateFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dateTo) {
+        com.mailally.analytics.dto.AnalyticsV1Dto dto = analyticsService.getAnalyticsV1(userDetails, campaignId, dateFrom, dateTo);
+        return ResponseEntity.ok(ApiResponse.<com.mailally.analytics.dto.AnalyticsV1Dto>builder()
+                .success(true).message("Event-engine analytics V1 retrieved").data(dto).timestamp(LocalDateTime.now()).build());
     }
 
     @GetMapping("/dashboard")
@@ -66,6 +87,33 @@ public class AnalyticsController {
         CampaignAnalyticsDto dto = analyticsService.getCampaignAnalyticsById(userDetails, id);
         return ResponseEntity.ok(ApiResponse.<CampaignAnalyticsDto>builder()
                 .success(true).message("Campaign details analytics retrieved").data(dto).timestamp(LocalDateTime.now()).build());
+    }
+
+    @GetMapping("/campaigns/{id}/analytics")
+    public ResponseEntity<ApiResponse<com.mailally.analytics.dto.AnalyticsV1Dto>> getCampaignAnalyticsV1(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long id) {
+        com.mailally.analytics.dto.AnalyticsV1Dto dto = analyticsService.getAnalyticsV1(userDetails, id, null, null);
+        return ResponseEntity.ok(ApiResponse.<com.mailally.analytics.dto.AnalyticsV1Dto>builder()
+                .success(true).message("Campaign events analytics retrieved").data(dto).timestamp(LocalDateTime.now()).build());
+    }
+
+    @GetMapping("/campaigns/{id}/events")
+    public ResponseEntity<ApiResponse<List<com.mailally.analytics.dto.AnalyticsV1Dto.LiveActivityFeedDto>>> getCampaignEvents(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long id) {
+        com.mailally.analytics.dto.AnalyticsV1Dto dto = analyticsService.getAnalyticsV1(userDetails, id, null, null);
+        return ResponseEntity.ok(ApiResponse.<List<com.mailally.analytics.dto.AnalyticsV1Dto.LiveActivityFeedDto>>builder()
+                .success(true).message("Campaign events feed retrieved").data(dto.getLiveActivityFeed()).timestamp(LocalDateTime.now()).build());
+    }
+
+    @GetMapping("/campaigns/{id}/timeline")
+    public ResponseEntity<ApiResponse<List<com.mailally.analytics.dto.TimeSeriesDataPointDto>>> getCampaignTimeline(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long id) {
+        com.mailally.analytics.dto.AnalyticsV1Dto dto = analyticsService.getAnalyticsV1(userDetails, id, null, null);
+        return ResponseEntity.ok(ApiResponse.<List<com.mailally.analytics.dto.TimeSeriesDataPointDto>>builder()
+                .success(true).message("Campaign timeline data retrieved").data(dto.getTimeline()).timestamp(LocalDateTime.now()).build());
     }
 
     @GetMapping("/templates")

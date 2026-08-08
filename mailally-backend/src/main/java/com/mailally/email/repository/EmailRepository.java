@@ -18,10 +18,15 @@ import java.util.Optional;
 public interface EmailRepository extends JpaRepository<Email, Long> {
 
     Optional<Email> findByIdAndOrganizationId(Long id, Long organizationId);
+    Optional<Email> findFirstByRecipientEmailIgnoreCaseOrderByCreatedAtDesc(String recipientEmail);
+    Optional<Email> findFirstByRecipientEmailIgnoreCaseAndSubjectOrderByCreatedAtDesc(String recipientEmail, String subject);
+    Optional<Email> findFirstByOrganizationIdAndRecipientEmailIgnoreCaseOrderByCreatedAtDesc(Long organizationId, String recipientEmail);
+    Optional<Email> findFirstByOrganizationIdAndRecipientEmailIgnoreCaseAndSubjectOrderByCreatedAtDesc(Long organizationId, String recipientEmail, String subject);
 
     Page<Email> findByOrganizationId(Long organizationId, Pageable pageable);
 
     Page<Email> findByOrganizationIdAndCampaignId(Long organizationId, Long campaignId, Pageable pageable);
+    List<Email> findByCampaignId(Long campaignId);
 
     List<Email> findByOrganizationIdAndCampaignIdAndStatus(Long organizationId, Long campaignId, String status);
 

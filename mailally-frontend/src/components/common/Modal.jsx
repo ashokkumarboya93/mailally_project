@@ -1,44 +1,70 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 
-export const Modal = ({ isOpen, onClose, title, children }) => {
+export const Modal = ({ isOpen, onClose, title, description, children, size = 'md' }) => {
+  // Close on Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
+
+  // Prevent body scroll when open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [isOpen]);
+
   if (!isOpen) return null;
+
+  const sizeClasses = {
+    sm: 'max-w-md',
+    md: 'max-w-lg',
+    lg: 'max-w-2xl',
+    xl: 'max-w-4xl',
+  };
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ backgroundColor: 'rgba(15, 14, 23, 0.65)', backdropFilter: 'blur(10px)' }}
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(4px)' }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
-        className="w-full max-w-lg overflow-hidden animate-scaleIn rounded-[32px] claude-card p-0 shadow-2xl border border-purple-500/20"
-        style={{
-          backgroundColor: 'var(--claude-surface)',
-        }}
+        className={`w-full ${sizeClasses[size] || sizeClasses.md} bg-white rounded-[16px] border border-[#E5E5E7] shadow-[0_16px_48px_rgba(0,0,0,0.12)] overflow-hidden animate-scaleIn`}
       >
-        <div
-          className="flex items-center justify-between px-8 py-5 border-b"
-          style={{
-            background: 'linear-gradient(135deg, rgba(123, 97, 255, 0.08), transparent)',
-            borderColor: 'var(--claude-border)',
-          }}
-        >
-          <h3
-            className="text-xl font-extrabold tracking-tight"
-            style={{ color: 'var(--claude-text)', fontFamily: 'var(--font-heading)' }}
-          >
-            {title}
-          </h3>
+        {/* Header */}
+        <div className="flex items-start justify-between px-6 py-5 border-b border-[#E5E5E7]">
+          <div>
+            <h3 className="text-lg font-bold tracking-tight text-[#0A0A0B]">
+              {title}
+            </h3>
+            {description && (
+              <p className="mt-1 text-[13px] text-[#9CA3AF] font-medium">{description}</p>
+            )}
+          </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl transition-all cursor-pointer text-slate-400 hover:text-[#7B61FF] hover:bg-purple-50 dark:hover:bg-purple-950/40"
+            className="p-1.5 rounded-lg transition-all cursor-pointer text-[#9CA3AF] hover:text-[#0A0A0B] hover:bg-[#F3F4F6] flex-shrink-0 ml-4"
+            aria-label="Close modal"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="p-8 max-h-[80vh] overflow-y-auto">{children}</div>
+
+        {/* Content */}
+        <div className="px-6 py-5 max-h-[70vh] overflow-y-auto">
+          {children}
+        </div>
       </div>
     </div>
   );

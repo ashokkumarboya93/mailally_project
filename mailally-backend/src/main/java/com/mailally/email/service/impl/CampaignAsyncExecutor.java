@@ -55,6 +55,8 @@ public class CampaignAsyncExecutor {
     private final OrganizationRepository organizationRepository;
     private final EmailRepository emailRepository;
     private final EmailQueueRepository emailQueueRepository;
+    private final com.mailally.email.repository.CampaignRecipientLogRepository recipientLogRepository;
+    private final com.mailally.email.repository.EmailEventRepository emailEventRepository;
     private final EmailProviderFactory providerFactory;
     private final TemplateRenderer templateRenderer;
     private final EmailEngineConfig config;
@@ -67,6 +69,8 @@ public class CampaignAsyncExecutor {
                                  OrganizationRepository organizationRepository,
                                  EmailRepository emailRepository,
                                  EmailQueueRepository emailQueueRepository,
+                                 com.mailally.email.repository.CampaignRecipientLogRepository recipientLogRepository,
+                                 com.mailally.email.repository.EmailEventRepository emailEventRepository,
                                  EmailProviderFactory providerFactory,
                                  TemplateRenderer templateRenderer,
                                  EmailEngineConfig config) {
@@ -75,6 +79,8 @@ public class CampaignAsyncExecutor {
         this.organizationRepository = organizationRepository;
         this.emailRepository = emailRepository;
         this.emailQueueRepository = emailQueueRepository;
+        this.recipientLogRepository = recipientLogRepository;
+        this.emailEventRepository = emailEventRepository;
         this.providerFactory = providerFactory;
         this.templateRenderer = templateRenderer;
         this.config = config;
@@ -195,6 +201,34 @@ public class CampaignAsyncExecutor {
                         .processedAt(LocalDateTime.now())
                         .createdBy(userId)
                         .build());
+
+                // Save V2 CampaignRecipientLog for analytics recipient table mapping
+                com.mailally.email.entity.CampaignRecipientLog recipientLog = com.mailally.email.entity.CampaignRecipientLog.builder()
+                        .campaign(campaign)
+                        .contact(contact)
+                        .email(contact.getEmail())
+                        .status(result.isSuccess() ? "SENT" : "FAILED")
+                        .provider(result.getProviderName())
+                        .providerMessageId(result.getResponseId())
+                        .attempts(1)
+                        .lastError(result.getErrorMessage())
+                        .smtpResponseCode(result.getSmtpResponseCode())
+                        .createdAt(LocalDateTime.now())
+                        .build();
+                recipientLogRepository.save(recipientLog);
+
+                // Save immutable EmailEvent for analytics aggregation engine
+                com.mailally.email.entity.EmailEvent emailEvent = com.mailally.email.entity.EmailEvent.builder()
+                        .organizationId(organizationId)
+                        .campaign(campaign)
+                        .recipient(recipientLog)
+                        .eventType(result.isSuccess() ? com.mailally.email.constant.EmailEventType.SENT : com.mailally.email.constant.EmailEventType.BOUNCED)
+                        .provider(result.getProviderName())
+                        .providerMessageId(result.getResponseId())
+                        .timestamp(LocalDateTime.now())
+                        .occurredAt(LocalDateTime.now())
+                        .build();
+                emailEventRepository.save(emailEvent);
 
                 if (result.isSuccess()) {
                     sent++;

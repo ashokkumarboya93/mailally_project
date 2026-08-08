@@ -33,6 +33,9 @@ public class CampaignRecipientLog {
     @Column(name = "provider", length = 50)
     private String provider;
 
+    @Column(name = "provider_message_id", length = 255)
+    private String providerMessageId;
+
     @Column(name = "attempts")
     private Integer attempts;
 
@@ -57,14 +60,15 @@ public class CampaignRecipientLog {
     public CampaignRecipientLog() {}
 
     public CampaignRecipientLog(Long id, Campaign campaign, Contact contact, String email, String status, String provider,
-                                Integer attempts, String lastError, String smtpResponseCode, String workerThreadId,
-                                Integer durationMs, LocalDateTime createdAt, LocalDateTime updatedAt) {
+                                String providerMessageId, Integer attempts, String lastError, String smtpResponseCode,
+                                String workerThreadId, Integer durationMs, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.campaign = campaign;
         this.contact = contact;
         this.email = email;
         this.status = status;
         this.provider = provider;
+        this.providerMessageId = providerMessageId;
         this.attempts = attempts;
         this.lastError = lastError;
         this.smtpResponseCode = smtpResponseCode;
@@ -91,6 +95,9 @@ public class CampaignRecipientLog {
 
     public String getProvider() { return provider; }
     public void setProvider(String provider) { this.provider = provider; }
+
+    public String getProviderMessageId() { return providerMessageId; }
+    public void setProviderMessageId(String providerMessageId) { this.providerMessageId = providerMessageId; }
 
     public Integer getAttempts() { return attempts; }
     public void setAttempts(Integer attempts) { this.attempts = attempts; }
@@ -135,6 +142,7 @@ public class CampaignRecipientLog {
         private String email;
         private String status;
         private String provider;
+        private String providerMessageId;
         private Integer attempts;
         private String lastError;
         private String smtpResponseCode;
@@ -151,6 +159,7 @@ public class CampaignRecipientLog {
         public CampaignRecipientLogBuilder email(String email) { this.email = email; return this; }
         public CampaignRecipientLogBuilder status(String status) { this.status = status; return this; }
         public CampaignRecipientLogBuilder provider(String provider) { this.provider = provider; return this; }
+        public CampaignRecipientLogBuilder providerMessageId(String providerMessageId) { this.providerMessageId = providerMessageId; return this; }
         public CampaignRecipientLogBuilder attempts(Integer attempts) { this.attempts = attempts; return this; }
         public CampaignRecipientLogBuilder lastError(String lastError) { this.lastError = lastError; return this; }
         public CampaignRecipientLogBuilder smtpResponseCode(String smtpResponseCode) { this.smtpResponseCode = smtpResponseCode; return this; }
@@ -160,7 +169,7 @@ public class CampaignRecipientLog {
         public CampaignRecipientLogBuilder updatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; return this; }
 
         public CampaignRecipientLog build() {
-            return new CampaignRecipientLog(id, campaign, contact, email, status, provider, attempts, lastError,
+            return new CampaignRecipientLog(id, campaign, contact, email, status, provider, providerMessageId, attempts, lastError,
                     smtpResponseCode, workerThreadId, durationMs, createdAt, updatedAt);
         }
     }

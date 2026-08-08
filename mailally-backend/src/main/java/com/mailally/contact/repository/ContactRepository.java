@@ -23,6 +23,8 @@ public interface ContactRepository extends JpaRepository<Contact, Long> {
 
     Optional<Contact> findByOrganizationIdAndEmailAndIsDeletedFalse(Long organizationId, String email);
 
+    List<Contact> findByEmailAndIsDeletedFalse(String email);
+
     Optional<Contact> findByOrganizationIdAndEmail(Long organizationId, String email);
 
     long countByOrganizationIdAndIsDeletedFalse(Long organizationId);

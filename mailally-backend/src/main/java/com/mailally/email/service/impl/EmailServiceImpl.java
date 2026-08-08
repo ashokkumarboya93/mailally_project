@@ -71,6 +71,8 @@ public class EmailServiceImpl implements EmailService {
     private final EmailEngineConfig config;
     private final CampaignAsyncExecutor campaignAsyncExecutor;
     private final CampaignOrchestrator campaignOrchestrator;
+    private final com.mailally.email.repository.CampaignRecipientLogRepository recipientLogRepository;
+    private final com.mailally.email.repository.EmailEventRepository emailEventRepository;
 
     public EmailServiceImpl(EmailRepository emailRepository,
                             EmailQueueRepository emailQueueRepository,
@@ -83,7 +85,9 @@ public class EmailServiceImpl implements EmailService {
                             EmailMapper emailMapper,
                             EmailEngineConfig config,
                             CampaignAsyncExecutor campaignAsyncExecutor,
-                            CampaignOrchestrator campaignOrchestrator) {
+                            CampaignOrchestrator campaignOrchestrator,
+                            com.mailally.email.repository.CampaignRecipientLogRepository recipientLogRepository,
+                            com.mailally.email.repository.EmailEventRepository emailEventRepository) {
         this.emailRepository = emailRepository;
         this.emailQueueRepository = emailQueueRepository;
         this.campaignRepository = campaignRepository;
@@ -96,6 +100,8 @@ public class EmailServiceImpl implements EmailService {
         this.config = config;
         this.campaignAsyncExecutor = campaignAsyncExecutor;
         this.campaignOrchestrator = campaignOrchestrator;
+        this.recipientLogRepository = recipientLogRepository;
+        this.emailEventRepository = emailEventRepository;
     }
 
     @Override
@@ -215,6 +221,35 @@ public class EmailServiceImpl implements EmailService {
                     .build();
 
             emailRepository.save(emailLog);
+
+            // Save V2 CampaignRecipientLog for recipient activity table and webhook matching
+            com.mailally.email.entity.CampaignRecipientLog recipientLog = com.mailally.email.entity.CampaignRecipientLog.builder()
+                    .campaign(campaign)
+                    .contact(contact)
+                    .email(contact.getEmail())
+                    .status(result.isSuccess() ? "SENT" : "FAILED")
+                    .provider(result.getProviderName())
+                    .providerMessageId(result.getResponseId())
+                    .attempts(1)
+                    .lastError(result.getErrorMessage())
+                    .smtpResponseCode(result.getSmtpResponseCode())
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            recipientLogRepository.save(recipientLog);
+
+            // Save immutable EmailEvent for analytics engine
+            com.mailally.email.entity.EmailEvent emailEvent = com.mailally.email.entity.EmailEvent.builder()
+                    .organizationId(currentUser.getOrganizationId())
+                    .campaign(campaign)
+                    .recipient(recipientLog)
+                    .eventType(result.isSuccess() ? com.mailally.email.constant.EmailEventType.SENT : com.mailally.email.constant.EmailEventType.BOUNCED)
+                    .provider(result.getProviderName())
+                    .providerMessageId(result.getResponseId())
+                    .timestamp(LocalDateTime.now())
+                    .occurredAt(LocalDateTime.now())
+                    .build();
+            emailEventRepository.save(emailEvent);
+
             emailQueueRepository.save(EmailQueue.builder()
                     .organization(campaign.getOrganization())
                     .campaign(campaign)

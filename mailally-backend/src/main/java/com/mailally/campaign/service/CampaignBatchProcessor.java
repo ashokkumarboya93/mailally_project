@@ -216,6 +216,9 @@ public class CampaignBatchProcessor {
 
                             if (sendResult.isSuccess()) {
                                 recipient.setStatus("DELIVERED");
+                                if (sendResult.getResponseId() != null && !sendResult.getResponseId().isBlank()) {
+                                    recipient.setResponseId(sendResult.getResponseId());
+                                }
                                 recipient.setSentAt(LocalDateTime.now());
                                 recipient.setDeliveredAt(LocalDateTime.now());
                                 delivered.incrementAndGet();

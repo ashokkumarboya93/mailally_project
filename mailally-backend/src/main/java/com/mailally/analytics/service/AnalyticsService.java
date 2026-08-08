@@ -21,6 +21,8 @@ import java.util.List;
  */
 public interface AnalyticsService {
 
+    com.mailally.analytics.dto.AnalyticsV1Dto getAnalyticsV1(CustomUserDetails currentUser, Long campaignId, LocalDateTime dateFrom, LocalDateTime dateTo);
+
     DashboardOverviewDto getDashboardOverview(CustomUserDetails currentUser);
 
     List<CampaignAnalyticsDto> getCampaignAnalytics(CustomUserDetails currentUser, LocalDateTime dateFrom, LocalDateTime dateTo);

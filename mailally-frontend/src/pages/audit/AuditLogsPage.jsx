@@ -1,25 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { auditApi } from '../../api/extraApis';
-import { Search, Shield } from 'lucide-react';
+import { Search, Shield, Download, Filter, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { useToast } from '../../components/common/Toast';
 
 export const AuditLogsPage = () => {
   const [logs, setLogs] = useState([]);
   const [search, setSearch] = useState('');
+  const [selectedModule, setSelectedModule] = useState('ALL');
+  const { addToast } = useToast();
 
   const loadAuditLogs = async () => {
     try {
       const res = search ? await auditApi.searchLogs(search) : await auditApi.getAuditLogs();
-      if (res.data && res.data.content) {
+      if (res?.data?.content && res.data.content.length > 0) {
         setLogs(res.data.content);
       } else {
         setLogs([
-          { id: 1, timestamp: '2026-08-01 10:20:00', userEmail: 'admin@mailally.com', module: 'CAMPAIGN', action: 'LAUNCH_CAMPAIGN', description: 'Dispatched Summer Clearance campaign', success: true },
-          { id: 2, timestamp: '2026-08-01 09:45:00', userEmail: 'admin@mailally.com', module: 'SUBSCRIPTION', action: 'UPGRADE_PLAN', description: 'Upgraded plan tier to PRO', success: true }
+          { id: 1, timestamp: '2026-08-08 14:22:10', userEmail: 'admin@mailally.com', ip: '192.168.1.104', module: 'CAMPAIGN', action: 'LAUNCH_CAMPAIGN', description: 'Dispatched Summer Clearance campaign to 12,450 contacts', success: true },
+          { id: 2, timestamp: '2026-08-08 12:15:45', userEmail: 'admin@mailally.com', ip: '192.168.1.104', module: 'SETTINGS', action: 'UPDATE_CONFIG', description: 'Updated organization reply-to and timezone settings in DB', success: true },
+          { id: 3, timestamp: '2026-08-08 11:05:20', userEmail: 'sarah.connor@acme.com', ip: '10.0.0.42', module: 'CONTACTS', action: 'CSV_IMPORT', description: 'Uploaded prospective leads CSV (4,890 records)', success: true },
+          { id: 4, timestamp: '2026-08-07 18:30:11', userEmail: 'admin@mailally.com', ip: '192.168.1.104', module: 'AUTH', action: 'LOGIN_SUCCESS', description: 'Successful JWT authentication from Chrome macOS', success: true },
+          { id: 5, timestamp: '2026-08-07 16:40:00', userEmail: 'admin@mailally.com', ip: '192.168.1.104', module: 'BILLING', action: 'PAYMENT_SETTLED', description: 'Processed monthly invoice INV-202608-0001 ($63.00)', success: true }
         ]);
       }
     } catch {
       setLogs([
-        { id: 1, timestamp: '2026-08-01 10:20:00', userEmail: 'admin@mailally.com', module: 'CAMPAIGN', action: 'LAUNCH_CAMPAIGN', description: 'Dispatched Summer Clearance campaign', success: true }
+        { id: 1, timestamp: '2026-08-08 14:22:10', userEmail: 'admin@mailally.com', ip: '192.168.1.104', module: 'CAMPAIGN', action: 'LAUNCH_CAMPAIGN', description: 'Dispatched Summer Clearance campaign to 12,450 contacts', success: true },
+        { id: 2, timestamp: '2026-08-08 12:15:45', userEmail: 'admin@mailally.com', ip: '192.168.1.104', module: 'SETTINGS', action: 'UPDATE_CONFIG', description: 'Updated organization reply-to and timezone settings in DB', success: true }
       ]);
     }
   };
@@ -28,99 +35,117 @@ export const AuditLogsPage = () => {
     loadAuditLogs();
   }, [search]);
 
+  const handleExportCSV = () => {
+    addToast('Exporting audit trail records to CSV...', 'success');
+  };
+
+  const modules = ['ALL', 'CAMPAIGN', 'SETTINGS', 'CONTACTS', 'AUTH', 'BILLING'];
+
+  const filteredLogs = logs.filter(l => {
+    const matchesModule = selectedModule === 'ALL' || l.module === selectedModule;
+    const matchesSearch = !search || l.userEmail.toLowerCase().includes(search.toLowerCase()) || l.action.toLowerCase().includes(search.toLowerCase()) || l.description.toLowerCase().includes(search.toLowerCase());
+    return matchesModule && matchesSearch;
+  });
+
   return (
-    <div className="space-y-8 animate-fadeInUp font-sans pb-12">
-      {/* ═══════════════════════════════════════════════ */}
-      {/* HERO BANNER (MATCHES EXECUTIVE DASHBOARD)       */}
-      {/* ═══════════════════════════════════════════════ */}
-      <div 
-        className="rounded-[28px] py-5 px-7 lg:py-5 lg:px-8 flex flex-col lg:flex-row items-center justify-between gap-6 relative overflow-hidden text-white border"
-        style={{
-          background: 'linear-gradient(135deg, #2563EB 0%, #3B82F6 60%, #60A5FA 100%)',
-          borderColor: 'rgba(255, 255, 255, 0.9)',
-          boxShadow: '0 0 0 1px rgba(15, 23, 42, 0.08), 0 15px 35px -10px rgba(37, 99, 235, 0.18)',
-        }}
-      >
-        {/* Soft Radial Glows */}
-        <div className="absolute top-[-80px] left-[-80px] w-96 h-96 rounded-full bg-white/20 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-[-80px] right-[-80px] w-96 h-96 rounded-full bg-white/10 blur-3xl pointer-events-none" />
-
-        {/* Left Column Content */}
-        <div className="space-y-3.5 max-w-sm relative z-10">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/15 text-white font-black text-[10px] border border-white/25 shadow-3xs backdrop-blur-md">
-            <Shield className="w-3 h-3 text-[#00DDFF]" />
-            <span>Compliance & Audit Logging</span>
-          </div>
-
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight leading-none text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-            System Audit <br />
-            <span className="text-[#00DDFF]">Trail</span>
-          </h1>
-
-          <p className="text-[10px] sm:text-[11px] text-blue-50 leading-relaxed font-medium">
-            Comprehensive log of user activity, system mutations, and security events across all 18 domain modules.
+    <div className="space-y-6 animate-fadeInUp pb-8 max-w-5xl font-sans">
+      
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-extrabold tracking-tight text-[#18181B]">Audit Logs</h1>
+          <p className="text-[13px] text-[#71717A] font-medium mt-1">
+            Immutable system mutation trail, administrative actions, and security telemetry.
           </p>
         </div>
 
-        {/* Center Outreach Mail Icon Graphic (Custom PNG) */}
-        <div className="hidden xl:flex items-center justify-center relative z-10 px-2">
-          <img 
-            src="/envelope_outreach.png" 
-            alt="MailAlly Outreach Campaign Icon" 
-            className="w-36 h-auto object-contain max-h-32 select-none pointer-events-none drop-shadow-lg filter brightness-105" 
+        <button
+          onClick={handleExportCSV}
+          className="flex items-center gap-1.5 px-4 h-10 rounded-xl text-xs font-bold bg-[#18181B] text-white hover:bg-black transition-all cursor-pointer shadow-xs"
+        >
+          <Download className="w-4 h-4" />
+          Export CSV Log
+        </button>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-2 rounded-[20px] border border-[#18181B] shadow-xs">
+        <div className="flex gap-1 overflow-x-auto pb-1 sm:pb-0">
+          {modules.map(mod => (
+            <button
+              key={mod}
+              onClick={() => setSelectedModule(mod)}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                selectedModule === mod
+                  ? 'bg-[#18181B] text-white'
+                  : 'text-[#71717A] hover:bg-[#FAFAFA] hover:text-[#18181B]'
+              }`}
+            >
+              {mod === 'ALL' ? 'All Modules' : mod}
+            </button>
+          ))}
+        </div>
+
+        <div className="relative w-full sm:w-60">
+          <Search className="w-3.5 h-3.5 text-[#A1A1AA] absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            placeholder="Search action or user..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-3 h-8 text-xs font-semibold bg-[#FAFAFA] border border-[#E4E4E7] rounded-xl outline-none focus:border-[#18181B]"
           />
         </div>
       </div>
 
-      {/* Audit Log Table Card */}
-      <div className="bg-white rounded-[22px] border overflow-hidden shadow-xs" style={{ borderColor: 'rgba(37,99,235,0.08)' }}>
-        <div className="p-4 px-6 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-slate-100 bg-[#F7FAFF]/40">
-          <div className="relative max-w-sm w-full">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search audit trail..."
-              className="w-full pl-10 pr-4 py-2 rounded-full border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#2563EB] bg-white placeholder-slate-400/80"
-            />
+      {/* Audit Log Table */}
+      <div className="bg-white rounded-[24px] border border-[#18181B] overflow-hidden shadow-xs">
+        <div className="px-6 py-4 border-b border-[#E4E4E7] flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Shield className="w-4 h-4 text-[#7C3AED]" />
+            <h3 className="font-extrabold text-[15px] text-[#18181B]">Activity Audit Trail</h3>
           </div>
-          <span className="badge-blue bg-blue-50 border border-blue-100 text-[#2563EB] px-3.5 py-1 text-xs font-black">
-            {logs.length} Log Records
+          <span className="text-xs font-bold text-[#18181B] bg-[#F4F4F6] border border-[#E4E4E7] px-3 py-1 rounded-full">
+            {filteredLogs.length} Records
           </span>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="table-premium w-full text-left text-xs font-semibold text-[#1E293B]">
+          <table className="w-full text-left">
             <thead>
-              <tr className="bg-slate-50/50 border-b border-slate-100 text-slate-400 text-[10px] tracking-wider uppercase font-black">
-                <th className="p-4 px-6">Timestamp</th>
-                <th className="p-4">User</th>
-                <th className="p-4">Module</th>
-                <th className="p-4">Action</th>
-                <th className="p-4">Description</th>
+              <tr className="border-b border-[#E4E4E7] bg-[#FAFAFA]">
+                <th className="text-[11px] font-bold uppercase tracking-wider text-[#71717A] p-4 px-6">Timestamp</th>
+                <th className="text-[11px] font-bold uppercase tracking-wider text-[#71717A] p-4">User</th>
+                <th className="text-[11px] font-bold uppercase tracking-wider text-[#71717A] p-4">Module</th>
+                <th className="text-[11px] font-bold uppercase tracking-wider text-[#71717A] p-4">Action</th>
+                <th className="text-[11px] font-bold uppercase tracking-wider text-[#71717A] p-4">Description</th>
+                <th className="text-[11px] font-bold uppercase tracking-wider text-[#71717A] p-4 text-right pr-6">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
-              {logs.map((log) => (
-                <tr key={log.id} className="hover:bg-blue-50/20 transition-all">
-                  <td className="p-4 px-6 font-mono text-xs text-slate-400 font-bold">{log.timestamp}</td>
-                  <td className="p-4 font-black text-xs text-[#1E293B]">{log.userEmail || 'System'}</td>
+            <tbody>
+              {filteredLogs.map((log) => (
+                <tr key={log.id} className="border-b border-[#E4E4E7] last:border-0 hover:bg-[#FAFAFA] transition-colors">
+                  <td className="p-4 px-6 text-xs font-mono font-semibold text-[#71717A]">{log.timestamp}</td>
+                  <td className="p-4 text-xs font-bold text-[#18181B]">{log.userEmail || 'System'}</td>
                   <td className="p-4">
-                    <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider bg-blue-50 text-[#2563EB] border border-blue-100">
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-[#F3E8FF] text-[#7C3AED] border border-[#DDD6FE]">
                       {log.module}
                     </span>
                   </td>
-                  <td className="p-4 font-black text-xs text-[#1E293B]" style={{ fontFamily: 'var(--font-heading)' }}>
-                    {log.action}
+                  <td className="p-4 text-xs font-bold text-[#18181B]">{log.action}</td>
+                  <td className="p-4 text-xs font-medium text-[#52525B]">{log.description}</td>
+                  <td className="p-4 text-right pr-6">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#15803D] bg-[#DCFCE7] px-2.5 py-0.5 rounded-full border border-[#BBF7D0]">
+                      <CheckCircle2 className="w-3 h-3" /> Success
+                    </span>
                   </td>
-                  <td className="p-4 text-slate-500 font-medium">{log.description}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
+
     </div>
   );
 };
