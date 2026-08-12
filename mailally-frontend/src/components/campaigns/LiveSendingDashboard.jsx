@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { campaignApi } from '../../api/campaignApi';
+import { AlertModal } from '../common/AlertModal';
 import { Play, Pause, XCircle, Activity, CheckCircle, AlertTriangle, ShieldCheck, Cpu, X, FileText, RefreshCw, AlertOctagon } from 'lucide-react';
 
 export const LiveSendingDashboard = ({ campaignId, onClose, onFinished }) => {
+  const [alertConfig, setAlertConfig] = useState({ isOpen: false, type: 'error', title: '', message: '' });
   const [progress, setProgress] = useState({
     status: 'RUNNING',
     progressPercentage: 0,
@@ -136,7 +138,12 @@ export const LiveSendingDashboard = ({ campaignId, onClose, onFinished }) => {
         if (onClose) onClose();
       }
     } catch (e) {
-      alert('Control action failed: ' + (e.response?.data?.message || e.message));
+      setAlertConfig({
+        isOpen: true,
+        type: 'error',
+        title: 'Action Failed',
+        message: 'Control action failed: ' + (e.response?.data?.message || e.message)
+      });
     }
   };
 
@@ -227,9 +234,9 @@ export const LiveSendingDashboard = ({ campaignId, onClose, onFinished }) => {
           <span className="text-xs text-amber-700 font-medium block">Queued</span>
           <span className="text-lg font-bold text-amber-700">{progress.queuedCount}</span>
         </div>
-        <div className="bg-blue-50/60 p-3.5 rounded-2xl border border-blue-100 text-center">
-          <span className="text-xs text-blue-700 font-medium block">Sending</span>
-          <span className="text-lg font-bold text-blue-700">{progress.sendingCount}</span>
+        <div className="bg-sky-50/60 p-3.5 rounded-2xl border border-sky-100 text-center">
+          <span className="text-xs text-sky-700 font-medium block">Accepted / Sent</span>
+          <span className="text-lg font-bold text-sky-700">{progress.sentCount}</span>
         </div>
         <div className="bg-emerald-50/60 p-3.5 rounded-2xl border border-emerald-100 text-center">
           <span className="text-xs text-emerald-700 font-medium block">Delivered</span>
@@ -397,6 +404,15 @@ export const LiveSendingDashboard = ({ campaignId, onClose, onFinished }) => {
           </div>
         </div>
       )}
+
+      {/* Alert Status Modal */}
+      <AlertModal
+        isOpen={alertConfig.isOpen}
+        onClose={() => setAlertConfig(prev => ({ ...prev, isOpen: false }))}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+      />
 
     </div>
   );

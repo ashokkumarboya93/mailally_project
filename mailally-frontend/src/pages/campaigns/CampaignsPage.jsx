@@ -3,6 +3,7 @@ import { campaignApi, templateApi } from '../../api/campaignApi';
 import { contactApi } from '../../api/contactApi';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Modal } from '../../components/common/Modal';
+import { AlertModal } from '../../components/common/AlertModal';
 import { PageSkeletonLoader } from '../../components/common/PageSkeletonLoader';
 import { LiveSendingDashboard } from '../../components/campaigns/LiveSendingDashboard';
 import { CampaignDiagnosticsModal } from '../../components/campaigns/CampaignDiagnosticsModal';
@@ -24,6 +25,11 @@ export const CampaignsPage = () => {
 
   // Active Running Campaign State
   const [activeLiveCampaignId, setActiveLiveCampaignId] = useState(null);
+
+  // Alert Modal State
+  const [alertConfig, setAlertConfig] = useState({ isOpen: false, type: 'success', title: '', message: '' });
+  const showAlert = (type, message, title = '') => setAlertConfig({ isOpen: true, type, message, title: title || (type === 'success' ? 'Success' : 'Error') });
+  const closeAlert = () => setAlertConfig(prev => ({ ...prev, isOpen: false }));
 
   // Modals State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -118,7 +124,7 @@ export const CampaignsPage = () => {
       setSubject('');
       loadData();
     } catch (e) {
-      alert('Failed to create campaign: ' + (e.response?.data?.message || e.message));
+      showAlert('error', 'Failed to create campaign: ' + (e.response?.data?.message || e.message));
     }
   };
 
@@ -139,7 +145,7 @@ export const CampaignsPage = () => {
         } : null);
       }
     } catch (e) {
-      alert('Failed to attach template: ' + (e.response?.data?.message || e.message));
+      showAlert('error', 'Failed to attach template: ' + (e.response?.data?.message || e.message));
     }
   };
 
@@ -189,7 +195,7 @@ export const CampaignsPage = () => {
       setIsAttachCollectionOpen(false);
       loadData();
     } catch (e) {
-      alert('Failed to attach collection: ' + (e.response?.data?.message || e.message));
+      showAlert('error', 'Failed to attach collection: ' + (e.response?.data?.message || e.message));
     }
   };
 
@@ -201,7 +207,7 @@ export const CampaignsPage = () => {
       setDeleteConfirmId(null);
       await loadData();
     } catch (e) {
-      alert('Failed to delete campaign: ' + (e.response?.data?.message || e.message));
+      showAlert('error', 'Failed to delete campaign: ' + (e.response?.data?.message || e.message));
     } finally {
       setDeleting(false);
     }
@@ -640,6 +646,15 @@ export const CampaignsPage = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Alert Status Modal */}
+      <AlertModal
+        isOpen={alertConfig.isOpen}
+        onClose={closeAlert}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+      />
 
     </div>
   );

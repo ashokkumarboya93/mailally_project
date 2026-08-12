@@ -5,12 +5,21 @@ public class ImportSettingsDto {
     private String batchName;
     private String sourceType = "CSV"; // CSV, EXCEL, DRIVE
     private String duplicateStrategy = "SKIP"; // SKIP, REPLACE, MERGE, KEEP_LATEST, KEEP_EXISTING
+    private String tag;
     private Boolean validateEmail = true;
     private Boolean skipEmptyRows = true;
     private Boolean trimSpaces = true;
     private Boolean normalizePhone = true;
 
     public ImportSettingsDto() {
+    }
+
+    public String getTag() {
+        return tag;
+    }
+
+    public void setTag(String tag) {
+        this.tag = tag;
     }
 
     public String getBatchName() {

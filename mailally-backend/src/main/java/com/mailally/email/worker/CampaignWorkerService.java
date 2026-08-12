@@ -5,15 +5,17 @@ import com.mailally.campaign.repository.CampaignRepository;
 import com.mailally.email.cache.RedisProgressCache;
 import com.mailally.email.entity.CampaignBatch;
 import com.mailally.email.entity.CampaignRecipientLog;
+import com.mailally.email.provider.BatchSendResult;
 import com.mailally.email.provider.EmailProvider;
 import com.mailally.email.provider.EmailProviderFactory;
-import com.mailally.email.provider.EmailSendResult;
+import com.mailally.email.provider.RecipientBatchItem;
 import com.mailally.email.renderer.TemplateRenderer;
 import com.mailally.email.repository.CampaignBatchRepository;
 import com.mailally.email.repository.CampaignRecipientLogRepository;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.ReadOffset;
 import org.springframework.data.redis.connection.stream.StreamOffset;
@@ -23,13 +25,13 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.regex.Pattern;
 
 /**
- * Worker service executing batches concurrently using Java virtual threads.
+ * High-Speed Worker service executing campaign batches concurrently using Brevo Batch API and Redis Streams.
  */
 @Service
 public class CampaignWorkerService {
@@ -37,8 +39,15 @@ public class CampaignWorkerService {
     private static final Logger log = LoggerFactory.getLogger(CampaignWorkerService.class);
     private static final String STREAM_KEY = "campaign:queue:pending";
     private static final String GROUP_NAME = "campaign-workers-group";
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@(.+)$");
 
     private final String nodeId = "worker-node-" + UUID.randomUUID().toString().substring(0, 8);
+
+    @Value("${mail.campaign.worker.concurrency:4}")
+    private int workerConcurrency;
+
+    @Value("${mailally.email.max-retries:3}")
+    private int maxRetries;
 
     private final StringRedisTemplate redisTemplate;
     private final CampaignBatchRepository batchRepository;
@@ -47,7 +56,8 @@ public class CampaignWorkerService {
     private final EmailProviderFactory providerFactory;
     private final TemplateRenderer templateRenderer;
     private final RedisProgressCache progressCache;
-    private final ExecutorService workerExecutor;
+    private final com.mailally.email.provider.ProviderCircuitBreaker circuitBreaker;
+    private ExecutorService workerExecutor;
 
     public CampaignWorkerService(StringRedisTemplate redisTemplate,
                                  CampaignBatchRepository batchRepository,
@@ -55,7 +65,8 @@ public class CampaignWorkerService {
                                  CampaignRepository campaignRepository,
                                  EmailProviderFactory providerFactory,
                                  TemplateRenderer templateRenderer,
-                                 RedisProgressCache progressCache) {
+                                 RedisProgressCache progressCache,
+                                 com.mailally.email.provider.ProviderCircuitBreaker circuitBreaker) {
         this.redisTemplate = redisTemplate;
         this.batchRepository = batchRepository;
         this.recipientRepository = recipientRepository;
@@ -63,26 +74,26 @@ public class CampaignWorkerService {
         this.providerFactory = providerFactory;
         this.templateRenderer = templateRenderer;
         this.progressCache = progressCache;
-        // Spawns Java virtual threads for light concurrent network dispatches
-        this.workerExecutor = Executors.newVirtualThreadPerTaskExecutor();
+        this.circuitBreaker = circuitBreaker;
     }
 
     @PostConstruct
     public void initGroup() {
+        this.workerExecutor = Executors.newFixedThreadPool(Math.max(2, workerConcurrency));
         try {
             redisTemplate.opsForStream().createGroup(STREAM_KEY, ReadOffset.from("0-0"), GROUP_NAME);
-            log.info("CampaignWorkerService [{}]: Consumer group '{}' successfully initialized.", nodeId, GROUP_NAME);
+            log.info("CampaignWorkerService [{}]: Initialized with concurrency={}, group='{}'.", nodeId, workerConcurrency, GROUP_NAME);
         } catch (Exception e) {
             log.debug("Consumer group initialization skipped: {}", e.getMessage());
         }
     }
 
-    @Scheduled(fixedDelay = 500)
+    @Scheduled(fixedDelay = 250)
     public void pollQueue() {
         try {
             List<MapRecord<String, Object, Object>> records = redisTemplate.opsForStream().read(
                 org.springframework.data.redis.connection.stream.Consumer.from(GROUP_NAME, nodeId),
-                StreamReadOptions.empty().count(10),
+                StreamReadOptions.empty().count(Math.max(1, workerConcurrency)),
                 StreamOffset.create(STREAM_KEY, ReadOffset.lastConsumed())
             );
 
@@ -111,22 +122,33 @@ public class CampaignWorkerService {
     }
 
     private void processBatch(Long campaignId, Long batchId, String providerName) {
-        log.info("CampaignWorkerService [{}]: Starting execution for batchId={}", nodeId, batchId);
+        log.info("CampaignWorkerService [{}]: Processing batchId={} for campaignId={}", nodeId, batchId, campaignId);
 
         CampaignBatch batch = batchRepository.findById(batchId).orElse(null);
         if (batch == null) {
-            log.error("Batch not found in database: {}", batchId);
+            log.error("Batch not found in DB: {}", batchId);
             return;
         }
 
-        batch.setStatus("RUNNING");
+        // Idempotency check: Skip if batch is already completed or accepted
+        if ("COMPLETED".equals(batch.getStatus()) || "ACCEPTED".equals(batch.getStatus())) {
+            log.info("Batch {} already completed/accepted. Skipping.", batchId);
+            return;
+        }
+
+        batch.setStatus("PROCESSING");
         batch.setWorkerNodeId(nodeId);
-        batch.setStartedAt(LocalDateTime.now());
+        if (batch.getStartedAt() == null) {
+            batch.setStartedAt(LocalDateTime.now());
+        }
+        if (batch.getIdempotencyKey() == null) {
+            batch.setIdempotencyKey(UUID.randomUUID().toString());
+        }
         batchRepository.save(batch);
 
         Campaign campaign = campaignRepository.findById(campaignId).orElse(null);
         if (campaign == null) {
-            log.error("Campaign not found for batch execution: {}", campaignId);
+            log.error("Campaign not found for batchId={}", batchId);
             batch.setStatus("FAILED");
             batchRepository.save(batch);
             return;
@@ -134,90 +156,176 @@ public class CampaignWorkerService {
 
         List<CampaignRecipientLog> allQueued = recipientRepository.findByCampaignIdAndStatus(campaignId, "QUEUED");
         if (allQueued.isEmpty()) {
-            log.info("No queued recipients found for campaignId={} batchId={}", campaignId, batchId);
             batch.setStatus("COMPLETED");
             batch.setCompletedAt(LocalDateTime.now());
             batchRepository.save(batch);
             return;
         }
 
-        int chunkSize = batch.getOptimalSize() != null ? batch.getOptimalSize() : 50;
+        int chunkSize = batch.getOptimalSize() != null ? batch.getOptimalSize() : 100;
         List<CampaignRecipientLog> recipients = allQueued.subList(0, Math.min(allQueued.size(), chunkSize));
 
-        EmailProvider provider = providerFactory.getProvider(providerName);
+        List<RecipientBatchItem> validBatchItems = new ArrayList<>();
+        List<CampaignRecipientLog> invalidRecipients = new ArrayList<>();
+
         String fromName = campaign.getFromName() != null ? campaign.getFromName() : "MailAlly";
         String fromEmail = campaign.getSenderEmail() != null ? campaign.getSenderEmail() : "info@marcamor.com";
+        String defaultSubject = campaign.getSubject() != null ? campaign.getSubject() : (campaign.getTemplate() != null ? campaign.getTemplate().getSubject() : "MailAlly Campaign");
+        String defaultHtmlBody = campaign.getTemplate() != null ? campaign.getTemplate().getHtmlContent() : "<p>MailAlly</p>";
 
-        int sent = 0;
-        int failed = 0;
+        // Pre-Send Recipient Validation & Personalized Tag Rendering
+        for (CampaignRecipientLog r : recipients) {
+            r.setWorkerThreadId(Thread.currentThread().getName());
+            r.setAttempts(r.getAttempts() + 1);
 
-        for (CampaignRecipientLog recipient : recipients) {
-            long startTime = System.currentTimeMillis();
-            recipient.setWorkerThreadId(Thread.currentThread().getName());
-            recipient.setAttempts(recipient.getAttempts() + 1);
-
-            try {
-                String renderedSubject = templateRenderer.render(
-                        campaign.getSubject() != null ? campaign.getSubject() : campaign.getTemplate().getSubject(),
-                        recipient.getContact()
-                );
-                String renderedBody = templateRenderer.render(
-                        campaign.getTemplate().getHtmlContent(),
-                        recipient.getContact()
-                );
-
-                EmailSendResult result = provider.send(
-                        recipient.getEmail(),
-                        recipient.getContact() != null ? recipient.getContact().getFirstName() : "",
-                        fromEmail,
-                        fromName,
-                        campaign.getReplyTo(),
-                        renderedSubject,
-                        renderedBody
-                );
-
-                long duration = System.currentTimeMillis() - startTime;
-                recipient.setDurationMs((int) duration);
-
-                if (result.isSuccess()) {
-                    recipient.setStatus("SENT");
-                    recipient.setProviderMessageId(result.getResponseId());
-                    recipient.setSmtpResponseCode(result.getSmtpResponseCode() != null ? result.getSmtpResponseCode() : "250 OK");
-                    progressCache.incrementSent(campaignId);
-                    sent++;
-                } else {
-                    String failureReason = result.getFailureCategory() != null ? result.getFailureCategory() : "PROVIDER_REJECTED";
-                    recipient.setStatus(failureReason);
-                    recipient.setLastError(result.getErrorMessage());
-                    recipient.setSmtpResponseCode(result.getSmtpResponseCode() != null ? result.getSmtpResponseCode() : "500");
-                    progressCache.incrementFailed(campaignId);
-                    failed++;
-
-                    log.error("[FAILED EMAIL LOG] Campaign ID: {} | Recipient: {} | Provider: {} | SMTP Response: {} | Provider Message ID: {} | Duration: {}ms | Exception: {} | Worker: {} | Correlation ID: {}",
-                            campaignId, recipient.getEmail(), provider.getProviderName(), recipient.getSmtpResponseCode(),
-                            result.getResponseId() != null ? result.getResponseId() : "N/A", duration, result.getErrorMessage(),
-                            Thread.currentThread().getName(), batchId);
-                }
-            } catch (Exception ex) {
-                long duration = System.currentTimeMillis() - startTime;
-                recipient.setDurationMs((int) duration);
-                recipient.setStatus("TEMPLATE_ERROR");
-                recipient.setLastError(ex.getMessage() != null ? ex.getMessage() : ex.toString());
-                recipient.setSmtpResponseCode("500");
+            if (r.getEmail() == null || !EMAIL_PATTERN.matcher(r.getEmail().trim()).matches()) {
+                r.setStatus("INVALID");
+                r.setLastError("Pre-send validation failed: Invalid email syntax");
+                invalidRecipients.add(r);
                 progressCache.incrementFailed(campaignId);
-                failed++;
+            } else {
+                r.setStatus("PROCESSING");
 
-                log.error("[FAILED EMAIL LOG] Campaign ID: {} | Recipient: {} | Provider: {} | SMTP Response: 500 | Provider Message ID: N/A | Duration: {}ms | Exception: {} | Worker: {} | Correlation ID: {}",
-                        campaignId, recipient.getEmail(), providerName, duration, ex.getMessage(), Thread.currentThread().getName(), batchId, ex);
+                Map<String, String> params = new HashMap<>();
+                if (r.getContact() != null) {
+                    params.put("firstName", r.getContact().getFirstName() != null ? r.getContact().getFirstName() : "");
+                    params.put("lastName", r.getContact().getLastName() != null ? r.getContact().getLastName() : "");
+                    params.put("company", r.getContact().getCompany() != null ? r.getContact().getCompany() : "");
+                    params.put("city", r.getContact().getCity() != null ? r.getContact().getCity() : "");
+                }
+
+                String personalizedSubject = templateRenderer.render(defaultSubject, r.getContact());
+                String personalizedHtml = templateRenderer.render(defaultHtmlBody, r.getContact());
+
+                validBatchItems.add(new RecipientBatchItem(
+                        r.getId(),
+                        r.getEmail().trim(),
+                        r.getContact() != null ? r.getContact().getFirstName() : "",
+                        r.getContact() != null ? r.getContact().getLastName() : "",
+                        params,
+                        personalizedSubject,
+                        personalizedHtml
+                ));
             }
-
-            recipientRepository.save(recipient);
         }
 
-        batch.setStatus(failed > 0 ? "COMPLETED_WITH_ERRORS" : "COMPLETED");
-        batch.setCompletedAt(LocalDateTime.now());
-        batchRepository.save(batch);
+        // Persist invalid recipient logs immediately
+        if (!invalidRecipients.isEmpty()) {
+            recipientRepository.saveAll(invalidRecipients);
+        }
 
-        log.info("CampaignWorkerService [{}]: Completed batchId={}. Sent: {}, Failed: {}", nodeId, batchId, sent, failed);
+        if (validBatchItems.isEmpty()) {
+            batch.setStatus("COMPLETED");
+            batch.setCompletedAt(LocalDateTime.now());
+            batchRepository.save(batch);
+            return;
+        }
+
+        if (!circuitBreaker.allowRequest(providerName)) {
+            log.warn("CampaignWorkerService [{}]: Circuit breaker OPEN for provider '{}'. Pausing batchId={}.", nodeId, providerName, batchId);
+            batch.setStatus("RETRYING");
+            batchRepository.save(batch);
+            return;
+        }
+
+        EmailProvider provider = providerFactory.getProvider(providerName);
+        long startTime = System.currentTimeMillis();
+
+        // Single Provider Batch API Dispatch (Brevo messageVersions)
+        BatchSendResult result = provider.sendBatch(
+                validBatchItems,
+                fromEmail,
+                fromName,
+                campaign.getReplyTo(),
+                defaultSubject,
+                defaultHtmlBody,
+                batch.getIdempotencyKey()
+        );
+
+        long duration = System.currentTimeMillis() - startTime;
+
+        if (result.isSuccess()) {
+            circuitBreaker.recordSuccess(providerName);
+            Map<Long, String> msgMap = result.getRecipientMessageIds();
+            List<CampaignRecipientLog> updatedValid = new ArrayList<>();
+
+            for (CampaignRecipientLog r : recipients) {
+                if ("INVALID".equals(r.getStatus())) continue;
+
+                r.setDurationMs((int) duration);
+                r.setProviderMessageId(msgMap.get(r.getId()));
+                r.setSmtpResponseCode(result.getSmtpResponseCode() != null ? result.getSmtpResponseCode() : "250 OK");
+                
+                // Enforce Atomic State Transition (QUEUED/PROCESSING -> ACCEPTED)
+                r.setStatus("ACCEPTED");
+                updatedValid.add(r);
+
+                progressCache.incrementSent(campaignId);
+            }
+
+            // Bulk Save Recipients via JDBC Batching
+            recipientRepository.saveAll(updatedValid);
+
+            batch.setStatus("COMPLETED");
+            batch.setProviderBatchId(result.getProviderBatchId());
+            batch.setCompletedAt(LocalDateTime.now());
+            batchRepository.save(batch);
+
+            log.info("CampaignWorkerService [{}]: Successfully completed Batch ID={} [Valid: {}, Invalid: {}, Duration: {}ms]",
+                    nodeId, batchId, validBatchItems.size(), invalidRecipients.size(), duration);
+
+        } else {
+            // Distinguish 429 rate-limit from other failures for circuit breaker
+            String responseCode = result.getSmtpResponseCode();
+            if ("429".equals(responseCode)) {
+                circuitBreaker.recordRateLimit(providerName, result.getRetryAfterSeconds());
+            } else {
+                circuitBreaker.recordFailure(providerName);
+            }
+
+            int currentRetry = batch.getRetryCount() != null ? batch.getRetryCount() + 1 : 1;
+            batch.setRetryCount(currentRetry);
+
+            boolean isRetryable = "429".equals(responseCode) || "500".equals(responseCode)
+                    || "502".equals(responseCode) || "503".equals(responseCode) || "504".equals(responseCode);
+
+            if (currentRetry <= maxRetries && isRetryable) {
+                batch.setStatus("RETRYING");
+                batchRepository.save(batch);
+
+                // Re-queue the batch to Redis for retry pickup by next poll cycle
+                // Workers will be gated by circuit breaker cooldown — no artificial Thread.sleep()
+                try {
+                    Map<String, String> retryPayload = new HashMap<>();
+                    retryPayload.put("campaignId", String.valueOf(campaignId));
+                    retryPayload.put("batchId", String.valueOf(batchId));
+                    retryPayload.put("provider", providerName != null ? providerName : "");
+                    redisTemplate.opsForStream().add(STREAM_KEY, retryPayload);
+                } catch (Exception requeueErr) {
+                    log.error("CampaignWorkerService [{}]: Failed to re-queue batchId={} for retry: {}", nodeId, batchId, requeueErr.getMessage());
+                }
+
+                log.warn("CampaignWorkerService [{}]: Transient {} failure for batchId={}. Retry {}/{}. Error: {}",
+                        nodeId, responseCode, batchId, currentRetry, maxRetries, result.getErrorMessage());
+            } else {
+                List<CampaignRecipientLog> failedLogs = new ArrayList<>();
+                for (CampaignRecipientLog r : recipients) {
+                    if ("INVALID".equals(r.getStatus())) continue;
+                    r.setDurationMs((int) duration);
+                    r.setStatus("FAILED");
+                    r.setLastError(result.getErrorMessage());
+                    r.setSmtpResponseCode(responseCode != null ? responseCode : "500");
+                    failedLogs.add(r);
+                    progressCache.incrementFailed(campaignId);
+                }
+                recipientRepository.saveAll(failedLogs);
+
+                batch.setStatus("FAILED");
+                batch.setCompletedAt(LocalDateTime.now());
+                batchRepository.save(batch);
+
+                log.error("CampaignWorkerService [{}]: Permanent batch failure for batchId={}. Error: {}", nodeId, batchId, result.getErrorMessage());
+            }
+        }
     }
 }

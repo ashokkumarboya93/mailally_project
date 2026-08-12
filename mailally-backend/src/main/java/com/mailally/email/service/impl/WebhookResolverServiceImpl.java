@@ -126,16 +126,30 @@ public class WebhookResolverServiceImpl implements WebhookResolverService {
                     }
                 }
                 
-                // Sync recipient log status
-                recipient.setStatus(event.getEventType().name());
-                recipientLogRepository.save(recipient);
+                // Sync recipient log status using database-level atomic conditional UPDATE
+                // This prevents race conditions where e.g. DELIVERED -> PROCESSING could occur
+                java.util.List<String> allowedFrom = getAllowedPredecessors(event.getEventType().name());
+                if (!allowedFrom.isEmpty()) {
+                    int updated = recipientLogRepository.atomicStatusTransition(recipient.getId(), event.getEventType().name(), allowedFrom);
+                    if (updated > 0) {
+                        log.info("[WEBHOOK RESOLVER]: Atomic status transition to {} for recipient ID={}", event.getEventType().name(), recipient.getId());
+                    } else {
+                        log.info("[WEBHOOK RESOLVER]: Status transition to {} blocked for recipient ID={} (current status has higher priority)", event.getEventType().name(), recipient.getId());
+                    }
+                } else {
+                    // Terminal/any-source statuses (e.g. COMPLAINT, UNSUBSCRIBED)
+                    recipient.setStatus(event.getEventType().name());
+                    recipientLogRepository.save(recipient);
+                }
                 log.info("[WEBHOOK RESOLVER]: Matched recipient log ID={}, campaignId={}, email={}", 
                         recipient.getId(), recipient.getCampaign() != null ? recipient.getCampaign().getId() : "N/A", recipient.getEmail());
             }
 
             if (campaignRecipientOpt.isPresent()) {
                 com.mailally.campaign.entity.CampaignRecipient cr = campaignRecipientOpt.get();
-                cr.setStatus(event.getEventType().name());
+                if (shouldUpdateStatus(cr.getStatus(), event.getEventType().name())) {
+                    cr.setStatus(event.getEventType().name());
+                }
                 LocalDateTime eventTime = event.getOccurredAt() != null ? event.getOccurredAt() : LocalDateTime.now();
                 if (event.getEventType() == com.mailally.email.constant.EmailEventType.OPENED && cr.getOpenedAt() == null) {
                     cr.setOpenedAt(eventTime);
@@ -343,6 +357,64 @@ public class WebhookResolverServiceImpl implements WebhookResolverService {
             case UNSUBSCRIBED -> emailLog.setStatus("UNSUBSCRIBED");
             default -> {
             }
+        }
+    }
+
+    private boolean shouldUpdateStatus(String currentStatus, String newStatus) {
+        if (currentStatus == null) return true;
+        if (currentStatus.equalsIgnoreCase(newStatus)) return true;
+        int currentPriority = getStatusPriority(currentStatus);
+        int newPriority = getStatusPriority(newStatus);
+        return newPriority >= currentPriority;
+    }
+
+    private int getStatusPriority(String status) {
+        if (status == null) return 0;
+        switch (status.toUpperCase()) {
+            case "QUEUED": return 1;
+            case "PROCESSING": return 2;
+            case "ACCEPTED": return 3;
+            case "SENT": return 3;
+            case "DELIVERED": return 4;
+            case "BOUNCED": return 5;
+            case "HARD_BOUNCE": return 5;
+            case "SOFT_BOUNCE": return 5;
+            case "FAILED": return 5;
+            case "INVALID": return 5;
+            case "REJECTED": return 5;
+            case "OPENED": return 6;
+            case "CLICKED": return 7;
+            default: return 3;
+        }
+    }
+
+    /**
+     * Returns the list of statuses from which a transition to targetStatus is allowed.
+     * Empty list means the status can be set from any state (e.g. COMPLAINT, UNSUBSCRIBED).
+     */
+    private java.util.List<String> getAllowedPredecessors(String targetStatus) {
+        if (targetStatus == null) return java.util.List.of();
+        switch (targetStatus.toUpperCase()) {
+            case "PROCESSING":
+                return java.util.List.of("QUEUED");
+            case "ACCEPTED":
+            case "SENT":
+                return java.util.List.of("QUEUED", "PROCESSING");
+            case "DELIVERED":
+                return java.util.List.of("QUEUED", "PROCESSING", "ACCEPTED", "SENT");
+            case "OPENED":
+                return java.util.List.of("QUEUED", "PROCESSING", "ACCEPTED", "SENT", "DELIVERED");
+            case "CLICKED":
+                return java.util.List.of("QUEUED", "PROCESSING", "ACCEPTED", "SENT", "DELIVERED", "OPENED");
+            case "BOUNCED":
+            case "HARD_BOUNCE":
+            case "SOFT_BOUNCE":
+            case "FAILED":
+            case "REJECTED":
+                return java.util.List.of("QUEUED", "PROCESSING", "ACCEPTED", "SENT");
+            default:
+                // COMPLAINT, UNSUBSCRIBED, INVALID: can be set from any state
+                return java.util.List.of();
         }
     }
 }

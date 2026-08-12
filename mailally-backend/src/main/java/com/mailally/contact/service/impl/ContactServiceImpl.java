@@ -312,7 +312,16 @@ public class ContactServiceImpl implements ContactService {
         }
 
         long startTime = System.currentTimeMillis();
-        SourceType sourceType = SourceType.valueOf(settings.getSourceType() != null ? settings.getSourceType().toUpperCase() : "CSV");
+        String originalFileName = file.getOriginalFilename();
+        SourceType sourceType;
+        if (originalFileName != null && (originalFileName.toLowerCase().endsWith(".xlsx") || originalFileName.toLowerCase().endsWith(".xls"))) {
+            sourceType = SourceType.EXCEL;
+        } else if (settings.getSourceType() != null && !settings.getSourceType().isBlank()) {
+            sourceType = SourceType.valueOf(settings.getSourceType().toUpperCase());
+        } else {
+            sourceType = SourceType.CSV;
+        }
+
         ContactImportProvider provider = importProviderFactory.getProvider(sourceType);
 
         List<ContactRawRow> rawRows;
@@ -347,7 +356,10 @@ public class ContactServiceImpl implements ContactService {
         collection.setType("IMPORT");
         collection.setOrganization(org);
         collection.setSourceType(sourceType.name());
-        collection.setTag("CSV");
+        String collectionTag = (settings.getTag() != null && !settings.getTag().isBlank())
+                ? settings.getTag().trim()
+                : (sourceType == SourceType.EXCEL ? "Excel" : "CSV");
+        collection.setTag(collectionTag);
         collection.setColorCode("#1F57F5");
         collection.setCreatedBy(currentUser.getUserId());
         collection.setUpdatedBy(currentUser.getUserId());

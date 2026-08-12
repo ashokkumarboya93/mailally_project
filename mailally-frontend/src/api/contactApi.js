@@ -62,5 +62,15 @@ export const contactApi = {
   
   getSavedFilters: async () => (await axiosClient.get('/contacts/filters/saved')).data,
   
-  createSavedFilter: async (name, filterJson) => (await axiosClient.post('/contacts/filters/saved', { name, filterJson })).data
+  createSavedFilter: async (name, filterJson) => (await axiosClient.post('/contacts/filters/saved', { name, filterJson })).data,
+
+  // Google Integration API
+  getGoogleConnectUrl: async () => (await axiosClient.get('/integrations/google/connect')).data,
+  getGoogleStatus: async () => (await axiosClient.get('/integrations/google/status')).data,
+  disconnectGoogle: async () => (await axiosClient.post('/integrations/google/disconnect')).data,
+  getGoogleDriveFiles: async (search = '') => (await axiosClient.get('/integrations/google/drive/files', { params: { search } })).data,
+  getGoogleWorksheets: async (spreadsheetId) => (await axiosClient.get(`/integrations/google/sheets/${spreadsheetId}/worksheets`)).data,
+  importGoogleDriveFile: async (fileId, tag) => (await axiosClient.post('/integrations/google/import/drive', null, { params: { fileId, tag } })).data,
+  importGoogleSheet: async (spreadsheetId, worksheetName, tag) => (await axiosClient.post('/integrations/google/import/sheet', null, { params: { spreadsheetId, worksheetName, tag } })).data
 };
+

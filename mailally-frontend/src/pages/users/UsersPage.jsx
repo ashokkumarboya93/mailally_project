@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Modal } from '../../components/common/Modal';
+import { ConfirmModal } from '../../components/common/ConfirmModal';
 import { useToast } from '../../components/common/Toast';
 import { UserPlus, Shield, Mail, Trash2, Search, Check, SlidersHorizontal } from 'lucide-react';
 
@@ -18,6 +19,14 @@ export const UsersPage = () => {
   const [search, setSearch] = useState('');
   const [selectedRoleFilter, setSelectedRoleFilter] = useState('ALL');
   const { addToast } = useToast();
+
+  const [confirmConfig, setConfirmConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: 'Remove',
+    onConfirm: () => {}
+  });
 
   const handleSendInvite = (e) => {
     e.preventDefault();
@@ -43,9 +52,16 @@ export const UsersPage = () => {
   };
 
   const handleRevoke = (id, email) => {
-    if (!window.confirm(`Are you sure you want to remove ${email} from your workspace?`)) return;
-    setUsers(prev => prev.filter(u => u.id !== id));
-    addToast(`Removed ${email} from workspace`, 'info');
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Remove Team Member',
+      message: `Are you sure you want to remove ${email} from your workspace?`,
+      confirmText: 'Remove Member',
+      onConfirm: () => {
+        setUsers(prev => prev.filter(u => u.id !== id));
+        addToast(`Removed ${email} from workspace`, 'info');
+      }
+    });
   };
 
   const roleColors = {
@@ -203,6 +219,16 @@ export const UsersPage = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        onClose={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmConfig.onConfirm}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+      />
 
     </div>
   );

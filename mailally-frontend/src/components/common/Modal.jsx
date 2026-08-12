@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 export const Modal = ({ isOpen, onClose, title, description, children, size = 'md' }) => {
@@ -31,16 +32,16 @@ export const Modal = ({ isOpen, onClose, title, description, children, size = 'm
     xl: 'max-w-4xl',
   };
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(4px)' }}
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.45)', backdropFilter: 'blur(4px)' }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
-        className={`w-full ${sizeClasses[size] || sizeClasses.md} bg-white rounded-[16px] border border-[#E5E5E7] shadow-[0_16px_48px_rgba(0,0,0,0.12)] overflow-hidden animate-scaleIn`}
+        className={`w-full ${sizeClasses[size] || sizeClasses.md} bg-white rounded-[20px] border border-[#E5E5E7] shadow-[0_20px_60px_rgba(0,0,0,0.18)] overflow-hidden animate-scaleIn`}
       >
         {/* Header */}
         <div className="flex items-start justify-between px-6 py-5 border-b border-[#E5E5E7]">
@@ -62,10 +63,12 @@ export const Modal = ({ isOpen, onClose, title, description, children, size = 'm
         </div>
 
         {/* Content */}
-        <div className="px-6 py-5 max-h-[70vh] overflow-y-auto">
+        <div className="px-6 py-5 max-h-[75vh] overflow-y-auto">
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
+

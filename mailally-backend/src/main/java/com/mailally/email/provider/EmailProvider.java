@@ -36,6 +36,13 @@ public interface EmailProvider {
     int batch();
 
     /**
+     * Sends a batch of personalized messages via provider's batch API.
+     */
+    default BatchSendResult sendBatch(java.util.List<RecipientBatchItem> items, String from, String fromName, String replyTo, String defaultSubject, String defaultHtmlBody, String idempotencyKey) {
+        throw new UnsupportedOperationException("Batch sending not supported by provider " + getProviderName());
+    }
+
+    /**
      * Flags indicating capabilities.
      */
     boolean supportsBulk();

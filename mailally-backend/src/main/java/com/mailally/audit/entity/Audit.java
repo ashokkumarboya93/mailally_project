@@ -63,6 +63,9 @@ public class Audit {
     @Column(name = "reference_id")
     private Long referenceId;
 
+    @Column(name = "resource_type")
+    private String resourceType = "GENERAL";
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -86,6 +89,7 @@ public class Audit {
         this.success = success;
         this.failureReason = failureReason;
         this.referenceId = referenceId;
+        this.resourceType = "GENERAL";
         this.createdAt = createdAt;
         this.isDeleted = isDeleted;
     }
@@ -114,6 +118,8 @@ public class Audit {
     public void setFailureReason(String failureReason) { this.failureReason = failureReason; }
     public Long getReferenceId() { return referenceId; }
     public void setReferenceId(Long referenceId) { this.referenceId = referenceId; }
+    public String getResourceType() { return resourceType; }
+    public void setResourceType(String resourceType) { this.resourceType = resourceType; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public Boolean getIsDeleted() { return isDeleted; }
@@ -124,6 +130,7 @@ public class Audit {
         if (this.createdAt == null) this.createdAt = LocalDateTime.now();
         if (this.timestamp == null) this.timestamp = LocalDateTime.now();
         if (this.module == null) this.module = "SYSTEM";
+        if (this.resourceType == null) this.resourceType = "GENERAL";
         if (this.success == null) this.success = true;
         if (this.isDeleted == null) this.isDeleted = false;
     }
@@ -143,6 +150,7 @@ public class Audit {
         private Boolean success;
         private String failureReason;
         private Long referenceId;
+        private String resourceType = "GENERAL";
         private LocalDateTime createdAt;
         private Boolean isDeleted;
 
@@ -160,12 +168,15 @@ public class Audit {
         public AuditBuilder success(Boolean success) { this.success = success; return this; }
         public AuditBuilder failureReason(String failureReason) { this.failureReason = failureReason; return this; }
         public AuditBuilder referenceId(Long referenceId) { this.referenceId = referenceId; return this; }
+        public AuditBuilder resourceType(String resourceType) { this.resourceType = resourceType; return this; }
         public AuditBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
         public AuditBuilder isDeleted(Boolean isDeleted) { this.isDeleted = isDeleted; return this; }
 
         public Audit build() {
-            return new Audit(id, organization, user, action, module, description, ipAddress, browser,
+            Audit audit = new Audit(id, organization, user, action, module, description, ipAddress, browser,
                     timestamp, success, failureReason, referenceId, createdAt, isDeleted);
+            audit.setResourceType(resourceType != null ? resourceType : "GENERAL");
+            return audit;
         }
     }
 }

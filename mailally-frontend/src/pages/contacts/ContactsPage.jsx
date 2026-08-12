@@ -3,6 +3,8 @@ import { contactApi } from '../../api/contactApi';
 import { campaignApi } from '../../api/campaignApi';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Modal } from '../../components/common/Modal';
+import { AlertModal } from '../../components/common/AlertModal';
+import { ConfirmModal } from '../../components/common/ConfirmModal';
 import { PageSkeletonLoader } from '../../components/common/PageSkeletonLoader';
 import { GoogleDrivePickerModal } from '../../components/contacts/GoogleDrivePickerModal';
 import { ImportHistoryModal } from '../../components/contacts/ImportHistoryModal';
@@ -33,15 +35,64 @@ export const ContactsPage = () => {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isDriveModalOpen, setIsDriveModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
-  const [isCreateCollectionOpen, setIsCreateCollectionOpen] = useState(false);
   const [isAddToCampaignOpen, setIsAddToCampaignOpen] = useState(false);
+
+  // Alert Modal State
+  const [alertConfig, setAlertConfig] = useState({
+    isOpen: false,
+    type: 'success',
+    title: '',
+    message: ''
+  });
+
+  const showAlert = (type, message, title = '') => {
+    setAlertConfig({
+      isOpen: true,
+      type,
+      message,
+      title: title || (type === 'success' ? 'Success' : 'Error')
+    });
+  };
+
+  const closeAlert = () => {
+    setAlertConfig(prev => ({ ...prev, isOpen: false }));
+  };
+
+  // Confirm Modal State
+  const [confirmConfig, setConfirmConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: 'Delete',
+    onConfirm: () => {}
+  });
+
+  const showConfirm = ({ title, message, confirmText = 'Delete', onConfirm }) => {
+    setConfirmConfig({
+      isOpen: true,
+      title,
+      message,
+      confirmText,
+      onConfirm
+    });
+  };
+
+  const closeConfirm = () => setConfirmConfig(prev => ({ ...prev, isOpen: false }));
 
   // Form State
   const [importFile, setImportFile] = useState(null);
-  const [duplicateStrategy, setDuplicateStrategy] = useState('SKIP');
+  const [importTag, setImportTag] = useState('');
   const [importing, setImporting] = useState(false);
   const [history, setHistory] = useState([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState('');
+
+  const [newContact, setNewContact] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    company: '',
+    status: 'SUBSCRIBED'
+  });
 
   const loadData = async () => {
     setLoading(true);
@@ -116,15 +167,18 @@ export const ContactsPage = () => {
 
   const handleStartImport = async (e) => {
     e.preventDefault();
-    if (!importFile) return alert('Please select a file');
+    if (!importFile) return showAlert('error', 'Please select a file (.xlsx or .csv)');
     setImporting(true);
     try {
       const fd = new FormData();
       fd.append('file', importFile);
-      fd.append('duplicateStrategy', duplicateStrategy);
+      if (importTag) {
+        fd.append('tag', importTag);
+      }
       const res = await contactApi.startImport(fd);
       setIsImportModalOpen(false);
       setImportFile(null);
+      setImportTag('');
 
       if (res?.data?.collectionId) {
         setActiveCollectionId(res.data.collectionId);
@@ -134,26 +188,31 @@ export const ContactsPage = () => {
       }
 
       loadData();
-      alert('Import executed successfully! All contacts loaded into interactive spreadsheet.');
+      showAlert('success', 'Import executed successfully! All contacts loaded into interactive spreadsheet.');
     } catch (err) {
-      alert('Import failed: ' + (err.response?.data?.message || err.message));
+      showAlert('error', 'Import failed: ' + (err.response?.data?.message || err.message));
     } finally {
       setImporting(false);
     }
   };
 
-  const handleDriveImport = async (selectedDriveFile) => {
+  const handleCreateContact = async (e) => {
+    e.preventDefault();
+    if (!newContact.email) return showAlert('error', 'Email address is required');
     try {
-      await contactApi.createCollection({
-        name: selectedDriveFile.name.replace(/\.[^/.]+$/, ''),
-        sourceType: 'GOOGLE_DRIVE',
-        tag: 'Drive'
-      });
+      await contactApi.createContact(newContact);
+      setIsAddModalOpen(false);
+      setNewContact({ firstName: '', lastName: '', email: '', company: '', status: 'SUBSCRIBED' });
       loadData();
-      alert(`Imported ${selectedDriveFile.name} from Google Drive successfully!`);
-    } catch (e) {
-      console.error(e);
+      showAlert('success', 'Contact added successfully!');
+    } catch (err) {
+      showAlert('error', 'Failed to add contact: ' + (err.response?.data?.message || err.message));
     }
+  };
+
+  const handleDriveImport = async (res) => {
+    loadData();
+    showAlert('success', 'Google source imported successfully!');
   };
 
   const handleSaveInlineCell = async (contactId, fieldName, isCustomField) => {
@@ -163,31 +222,31 @@ export const ContactsPage = () => {
       setEditValue('');
       loadData();
     } catch (e) {
-      alert('Failed to save cell: ' + (e.response?.data?.message || e.message));
+      showAlert('error', 'Failed to save cell: ' + (e.response?.data?.message || e.message));
     }
   };
 
   const handleAddCollectionToCampaign = async (targetTarget) => {
-    if (!selectedCampaignId) return alert('Please select a target campaign');
+    if (!selectedCampaignId) return showAlert('error', 'Please select a target campaign');
     try {
       if (targetTarget === 'SELECTED') {
-        if (selectedIds.length === 0) return alert('No contacts selected');
+        if (selectedIds.length === 0) return showAlert('error', 'No contacts selected');
         await contactApi.executeBulkAction({
           operation: 'ADD_TO_CAMPAIGN',
           contactIds: selectedIds,
           targetCampaignId: Number(selectedCampaignId)
         });
-        alert(`Successfully attached ${selectedIds.length} contacts to campaign!`);
+        showAlert('success', `Successfully attached ${selectedIds.length} contacts to campaign!`);
         setSelectedIds([]);
       } else {
         await campaignApi.addCollectionToCampaign(selectedCampaignId, targetTarget);
-        alert('Collection attached to campaign successfully!');
+        showAlert('success', 'Collection attached to campaign successfully!');
       }
       setIsAddToCampaignOpen(false);
       setSelectedCampaignId('');
       loadData();
     } catch (e) {
-      alert('Failed to attach contacts to campaign: ' + (e.response?.data?.message || e.message));
+      showAlert('error', 'Failed to attach contacts to campaign: ' + (e.response?.data?.message || e.message));
     }
   };
 
@@ -219,45 +278,64 @@ export const ContactsPage = () => {
       setIsEditModalOpen(false);
       setEditingContact(null);
       loadData();
-      alert('Contact updated successfully!');
+      showAlert('success', 'Contact updated successfully!');
     } catch (err) {
-      alert('Failed to update contact: ' + (err.response?.data?.message || err.message));
+      showAlert('error', 'Failed to update contact: ' + (err.response?.data?.message || err.message));
     }
   };
 
-  const handleDeleteCollection = async (collectionId, collectionName) => {
-    if (!window.confirm(`Are you sure you want to delete collection "${collectionName}" and all its contacts?`)) return;
-    try {
-      await contactApi.deleteCollection(collectionId);
-      if (activeCollectionId === collectionId) setActiveCollectionId(null);
-      loadData();
-      alert('Collection deleted successfully!');
-    } catch (e) {
-      alert('Failed to delete collection: ' + (e.response?.data?.message || e.message));
-    }
+  const handleDeleteCollection = (collectionId, collectionName) => {
+    showConfirm({
+      title: 'Delete Collection',
+      message: `Are you sure you want to delete collection "${collectionName}" and all its contacts?`,
+      confirmText: 'Delete Collection',
+      onConfirm: async () => {
+        try {
+          await contactApi.deleteCollection(collectionId);
+          if (activeCollectionId === collectionId) setActiveCollectionId(null);
+          loadData();
+          showAlert('success', 'Collection deleted successfully!');
+        } catch (e) {
+          showAlert('error', 'Failed to delete collection: ' + (e.response?.data?.message || e.message));
+        }
+      }
+    });
   };
 
-  const handleDeleteSingleContact = async (contactId) => {
-    if (!window.confirm('Are you sure you want to delete this contact record?')) return;
-    try {
-      await contactApi.deleteContact(contactId);
-      setContacts(prev => prev.filter(c => c.id !== contactId));
-    } catch (e) {
-      alert('Failed to delete contact: ' + (e.response?.data?.message || e.message));
-    }
+  const handleDeleteSingleContact = (contactId) => {
+    showConfirm({
+      title: 'Delete Contact',
+      message: 'Are you sure you want to delete this contact record?',
+      confirmText: 'Delete Contact',
+      onConfirm: async () => {
+        try {
+          await contactApi.deleteContact(contactId);
+          setContacts(prev => prev.filter(c => c.id !== contactId));
+          showAlert('success', 'Contact deleted successfully!');
+        } catch (e) {
+          showAlert('error', 'Failed to delete contact: ' + (e.response?.data?.message || e.message));
+        }
+      }
+    });
   };
 
-  const handleBulkDeleteContacts = async () => {
-    if (selectedIds.length === 0) return alert('No contacts selected');
-    if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} selected contacts?`)) return;
-    try {
-      await contactApi.executeBulkAction({ operation: 'DELETE', contactIds: selectedIds });
-      setSelectedIds([]);
-      loadData();
-      alert('Selected contacts deleted successfully!');
-    } catch (e) {
-      alert('Bulk delete failed: ' + (e.response?.data?.message || e.message));
-    }
+  const handleBulkDeleteContacts = () => {
+    if (selectedIds.length === 0) return showAlert('error', 'No contacts selected');
+    showConfirm({
+      title: 'Delete Selected Contacts',
+      message: `Are you sure you want to delete ${selectedIds.length} selected contacts?`,
+      confirmText: `Delete ${selectedIds.length} Contacts`,
+      onConfirm: async () => {
+        try {
+          await contactApi.executeBulkAction({ operation: 'DELETE', contactIds: selectedIds });
+          setSelectedIds([]);
+          loadData();
+          showAlert('success', 'Selected contacts deleted successfully!');
+        } catch (e) {
+          showAlert('error', 'Bulk delete failed: ' + (e.response?.data?.message || e.message));
+        }
+      }
+    });
   };
 
   const parseCustomFieldValue = (contact, key) => {
@@ -300,19 +378,19 @@ export const ContactsPage = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsImportModalOpen(true)}
-            className="ma-btn ma-btn-primary gap-1.5 text-[12px]"
+            className="ma-btn ma-btn-primary gap-1.5 text-[12px] cursor-pointer"
           >
             <Upload className="w-3.5 h-3.5" /> Upload File
           </button>
           <button
             onClick={() => setIsDriveModalOpen(true)}
-            className="ma-btn ma-btn-secondary gap-1.5 text-[12px]"
+            className="ma-btn ma-btn-secondary gap-1.5 text-[12px] cursor-pointer"
           >
             <HardDrive className="w-3.5 h-3.5 text-[#9CA3AF]" /> Drive Import
           </button>
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="ma-btn ma-btn-secondary gap-1.5 text-[12px]"
+            className="ma-btn ma-btn-secondary gap-1.5 text-[12px] cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5 text-[#9CA3AF]" /> Add Contact
           </button>
@@ -371,12 +449,6 @@ export const ContactsPage = () => {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-[13px] font-semibold text-[#5F6368] uppercase tracking-wider">Collections</h2>
-            <button
-              onClick={() => setIsCreateCollectionOpen(true)}
-              className="text-[12px] font-semibold text-[#0A0A0B] hover:underline cursor-pointer"
-            >
-              + Custom Collection
-            </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -428,7 +500,7 @@ export const ContactsPage = () => {
                     {/* Pastel Tags Row */}
                     <div className="flex flex-wrap items-center gap-1.5 pt-1">
                       <span className={`px-3 py-1 rounded-full text-[11px] font-bold ${theme.pillBg}`}>
-                        {coll.sourceType || 'Excel'}
+                        {coll.tag || coll.sourceType || 'Excel'}
                       </span>
                       <span className={`px-3 py-1 rounded-full text-[11px] font-bold ${theme.pillBg}`}>
                         {coll.contactCount || 0} Contacts
@@ -452,7 +524,7 @@ export const ContactsPage = () => {
                           setSelectedCampaignId('');
                           setIsAddToCampaignOpen(coll.id);
                         }}
-                        className="p-2 rounded-full border border-[#18181B] text-[#18181B] hover:bg-[#18181B] hover:text-white transition-colors"
+                        className="p-2 rounded-full border border-[#18181B] text-[#18181B] hover:bg-[#18181B] hover:text-white transition-colors cursor-pointer"
                         title="Add to Campaign"
                       >
                         <Megaphone className="w-3.5 h-3.5" />
@@ -463,7 +535,7 @@ export const ContactsPage = () => {
                           e.stopPropagation();
                           handleDeleteCollection(coll.id, coll.name);
                         }}
-                        className="p-2 rounded-full border border-rose-300 text-rose-600 hover:bg-rose-600 hover:text-white transition-colors"
+                        className="p-2 rounded-full border border-rose-300 text-rose-600 hover:bg-rose-600 hover:text-white transition-colors cursor-pointer"
                         title="Delete Collection"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -618,10 +690,92 @@ export const ContactsPage = () => {
         </div>
       )}
 
+      {/* Add Single Contact Modal */}
+      <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Add Contact">
+        <form onSubmit={handleCreateContact} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="ma-label">First Name</label>
+              <input
+                type="text"
+                placeholder="John"
+                value={newContact.firstName}
+                onChange={e => setNewContact({ ...newContact, firstName: e.target.value })}
+                className="ma-input"
+              />
+            </div>
+            <div>
+              <label className="ma-label">Last Name</label>
+              <input
+                type="text"
+                placeholder="Doe"
+                value={newContact.lastName}
+                onChange={e => setNewContact({ ...newContact, lastName: e.target.value })}
+                className="ma-input"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="ma-label">Email Address <span className="text-red-500">*</span></label>
+            <input
+              type="email"
+              required
+              placeholder="john.doe@example.com"
+              value={newContact.email}
+              onChange={e => setNewContact({ ...newContact, email: e.target.value })}
+              className="ma-input"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="ma-label">Company</label>
+              <input
+                type="text"
+                placeholder="Acme Corp"
+                value={newContact.company}
+                onChange={e => setNewContact({ ...newContact, company: e.target.value })}
+                className="ma-input"
+              />
+            </div>
+            <div>
+              <label className="ma-label">Status</label>
+              <select
+                value={newContact.status}
+                onChange={e => setNewContact({ ...newContact, status: e.target.value })}
+                className="ma-select"
+              >
+                <option value="SUBSCRIBED">SUBSCRIBED</option>
+                <option value="UNSUBSCRIBED">UNSUBSCRIBED</option>
+                <option value="BOUNCED">BOUNCED</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-[#F0F0F2]">
+            <button
+              type="button"
+              onClick={() => setIsAddModalOpen(false)}
+              className="ma-btn ma-btn-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="ma-btn ma-btn-primary"
+            >
+              Add Contact
+            </button>
+          </div>
+        </form>
+      </Modal>
+
       {/* Google Drive Import Modal */}
       <GoogleDrivePickerModal
         isOpen={isDriveModalOpen}
         onClose={() => setIsDriveModalOpen(false)}
+        onImportSuccess={handleDriveImport}
         onImportFile={handleDriveImport}
       />
 
@@ -633,7 +787,7 @@ export const ContactsPage = () => {
         onUndoImport={async (id) => {
           await contactApi.undoImportBatch(id);
           loadData();
-          alert('Batch undone successfully!');
+          showAlert('success', 'Batch undone successfully!');
         }}
       />
 
@@ -644,26 +798,34 @@ export const ContactsPage = () => {
             <label className="ma-label">Select File (.xlsx or .csv)</label>
             <input
               type="file"
-              accept=".csv,.xlsx"
+              accept=".csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
               onChange={(e) => setImportFile(e.target.files[0])}
-              className="ma-input p-2"
+              className="ma-input p-2 cursor-pointer"
             />
           </div>
-          <div>
-            <label className="ma-label">Duplicate Strategy</label>
-            <select
-              value={duplicateStrategy}
-              onChange={(e) => setDuplicateStrategy(e.target.value)}
-              className="ma-select"
-            >
-              <option value="SKIP">Skip Duplicates</option>
-              <option value="UPDATE">Update Existing</option>
-            </select>
+
+          <div className="flex items-center justify-between p-3 bg-[#F9FAFB] border border-[#E5E5E7] rounded-xl">
+            <span className="text-[13px] font-semibold text-[#374151]">Apply validation</span>
+            <span className="px-2.5 py-1 text-[11px] font-bold bg-[#DCFCE7] text-[#15803D] rounded-full border border-[#BBF7D0]">
+              Default Yes
+            </span>
           </div>
+
+          <div>
+            <label className="ma-label">TAG <span className="text-gray-400 font-normal">(optional)</span></label>
+            <input
+              type="text"
+              placeholder="e.g. Enterprise, Q3 Marketing, Healthcare"
+              value={importTag}
+              onChange={(e) => setImportTag(e.target.value)}
+              className="ma-input"
+            />
+          </div>
+
           <button
             type="submit"
             disabled={importing}
-            className="ma-btn ma-btn-primary w-full"
+            className="ma-btn ma-btn-primary w-full py-3 mt-2"
           >
             {importing ? 'Importing File...' : 'Start Import'}
           </button>
@@ -775,6 +937,25 @@ export const ContactsPage = () => {
           </form>
         </Modal>
       )}
+
+      {/* Alert Status Modal */}
+      <AlertModal
+        isOpen={alertConfig.isOpen}
+        onClose={closeAlert}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+      />
+
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        onClose={closeConfirm}
+        onConfirm={confirmConfig.onConfirm}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+      />
 
     </div>
   );

@@ -32,7 +32,7 @@ public class BrevoEmailProvider implements EmailProvider {
     public BrevoEmailProvider(EmailEngineConfig config) {
         this.config = config;
         this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(10))
+                .connectTimeout(Duration.ofSeconds(15))
                 .build();
         this.objectMapper = new ObjectMapper();
     }
@@ -116,6 +116,130 @@ public class BrevoEmailProvider implements EmailProvider {
     }
 
     @Override
+    public BatchSendResult sendBatch(java.util.List<RecipientBatchItem> items, String from, String fromName, String replyTo, String defaultSubject, String defaultHtmlBody, String idempotencyKey) {
+        if (!isAvailable()) {
+            return BatchSendResult.fail("Brevo API key not configured", PROVIDER_NAME, "401");
+        }
+
+        if (items == null || items.isEmpty()) {
+            return BatchSendResult.fail("Empty recipient items batch", PROVIDER_NAME, "400");
+        }
+
+        try {
+            String apiUrl = config.getBrevo().getApiUrl();
+            if (apiUrl == null || apiUrl.isBlank()) {
+                apiUrl = "https://api.brevo.com/v3/smtp/email";
+            }
+
+            String senderEmail = (from != null && !from.isBlank()) ? from : config.getDefaultSenderEmail();
+            String senderName = (fromName != null && !fromName.isBlank()) ? fromName : config.getDefaultSenderName();
+
+            ObjectNode rootNode = objectMapper.createObjectNode();
+            
+            // Sender
+            ObjectNode senderNode = rootNode.putObject("sender");
+            senderNode.put("email", senderEmail);
+            if (senderName != null && !senderName.isBlank()) {
+                senderNode.put("name", senderName);
+            }
+
+            if (replyTo != null && !replyTo.isBlank()) {
+                ObjectNode replyToNode = rootNode.putObject("replyTo");
+                replyToNode.put("email", replyTo);
+            }
+
+            rootNode.put("subject", defaultSubject != null ? defaultSubject : "MailAlly Campaign");
+            rootNode.put("htmlContent", defaultHtmlBody != null ? defaultHtmlBody : "<p>MailAlly Message</p>");
+
+            // Personalized Message Versions (Brevo Batch API)
+            ArrayNode messageVersionsNode = rootNode.putArray("messageVersions");
+            for (RecipientBatchItem item : items) {
+                ObjectNode versionNode = messageVersionsNode.addObject();
+                
+                ArrayNode toArr = versionNode.putArray("to");
+                ObjectNode recNode = toArr.addObject();
+                recNode.put("email", item.getEmail());
+                if (item.getFirstName() != null && !item.getFirstName().isBlank()) {
+                    recNode.put("name", item.getFirstName());
+                }
+
+                if (item.getPersonalizedSubject() != null && !item.getPersonalizedSubject().isBlank()) {
+                    versionNode.put("subject", item.getPersonalizedSubject());
+                }
+                if (item.getPersonalizedHtml() != null && !item.getPersonalizedHtml().isBlank()) {
+                    versionNode.put("htmlContent", item.getPersonalizedHtml());
+                }
+
+                if (item.getParams() != null && !item.getParams().isEmpty()) {
+                    ObjectNode paramsNode = versionNode.putObject("params");
+                    item.getParams().forEach(paramsNode::put);
+                }
+            }
+
+            String jsonPayload = objectMapper.writeValueAsString(rootNode);
+
+            HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
+                    .uri(URI.create(apiUrl))
+                    .header("accept", "application/json")
+                    .header("api-key", config.getBrevo().getApiKey())
+                    .header("content-type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
+                    .timeout(Duration.ofSeconds(60));
+
+            // Pass single standard idempotencyKey header per Brevo API documentation
+            if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+                reqBuilder.header("idempotencyKey", idempotencyKey);
+            }
+
+            HttpResponse<String> response = httpClient.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 201 || response.statusCode() == 200) {
+                java.util.Map<Long, String> recipientMsgMap = new java.util.HashMap<>();
+                String batchMessageId = "BREVO-BATCH-" + System.currentTimeMillis();
+
+                try {
+                    JsonNode respJson = objectMapper.readTree(response.body());
+                    if (respJson.has("messageIds") && respJson.get("messageIds").isArray()) {
+                        ArrayNode idsArray = (ArrayNode) respJson.get("messageIds");
+                        for (int i = 0; i < Math.min(items.size(), idsArray.size()); i++) {
+                            recipientMsgMap.put(items.get(i).getRecipientLogId(), idsArray.get(i).asText());
+                        }
+                    } else if (respJson.has("messageId")) {
+                        batchMessageId = respJson.get("messageId").asText();
+                        for (RecipientBatchItem item : items) {
+                            recipientMsgMap.put(item.getRecipientLogId(), batchMessageId + "-" + item.getRecipientLogId());
+                        }
+                    }
+                } catch (Exception e) {
+                    for (RecipientBatchItem item : items) {
+                        recipientMsgMap.put(item.getRecipientLogId(), batchMessageId + "-" + item.getRecipientLogId());
+                    }
+                }
+
+                // Fill any missing mapping
+                for (RecipientBatchItem item : items) {
+                    recipientMsgMap.putIfAbsent(item.getRecipientLogId(), batchMessageId + "-" + item.getRecipientLogId());
+                }
+
+                log.info("Successfully dispatched Brevo Batch API [Items: {}, BatchId: {}, Status: {}]", items.size(), batchMessageId, response.statusCode());
+                return BatchSendResult.ok(batchMessageId, recipientMsgMap, PROVIDER_NAME);
+            } else {
+                String retryAfter = response.headers().firstValue("Retry-After").orElse(null);
+                log.error("Brevo Batch API failed (HTTP {}): {} [Retry-After: {}]", response.statusCode(), response.body(), retryAfter);
+                BatchSendResult failResult = BatchSendResult.fail(
+                        "Brevo Batch Error (" + response.statusCode() + "): " + response.body(),
+                        PROVIDER_NAME, String.valueOf(response.statusCode()));
+                failResult.setRetryAfterSeconds(parseRetryAfter(retryAfter));
+                return failResult;
+            }
+
+        } catch (Exception ex) {
+            log.error("Brevo Batch Send Exception: {}", ex.getMessage(), ex);
+            return BatchSendResult.fail("Brevo Batch Exception: " + ex.getMessage(), PROVIDER_NAME, "500");
+        }
+    }
+
+    @Override
     public String getProviderName() {
         return PROVIDER_NAME;
     }
@@ -158,6 +282,15 @@ public class BrevoEmailProvider implements EmailProvider {
     @Override
     public boolean supportsTracking() {
         return true;
+    }
+
+    private int parseRetryAfter(String retryAfter) {
+        if (retryAfter == null || retryAfter.isBlank()) return 0;
+        try {
+            return Integer.parseInt(retryAfter.trim());
+        } catch (NumberFormatException e) {
+            return 30; // default 30s if header is non-numeric
+        }
     }
 }
 

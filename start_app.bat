@@ -14,7 +14,6 @@ start "MailAlly Frontend" cmd /k "cd mailally-frontend && npm run dev"
 echo 3. Opening Browser at http://localhost:5173...
 timeout /t 5 >nul
 start http://localhost:5173
-
 echo =======================================================
 echo Both Backend and Frontend are starting in separate windows!
 echo Backend:  http://localhost:8081

@@ -10,6 +10,7 @@ import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid
 } from 'recharts';
 import { CometLogo } from '../components/common/CometLogo';
+import mailallyBanner from '../../../images/mailallyBanner.png';
 
 const mockChartData = [
   { day: 'Mon', sent: 12000, opens: 5200 },
@@ -1293,8 +1294,8 @@ export const AgencyLandingPage = () => {
       <section className="py-24 px-6 lg:px-12 max-w-[1280px] mx-auto">
         <div className="relative">
           
-          {/* Blurred Pastel Gradient Shadow Glow behind CTA Box */}
-          <div className="absolute -inset-4 bg-gradient-to-r from-[#FF7EB6]/45 via-[#C084FC]/45 to-[#FFB88C]/45 blur-3xl rounded-[40px] -z-10" />
+          {/* Blurred Multi-Tone Ambient Gradient Glow behind CTA Box */}
+          <div className="absolute -inset-4 bg-gradient-to-r from-[#C084FC]/50 via-[#00DDFF]/40 via-[#FF7EB6]/45 to-[#FFB88C]/50 blur-3xl rounded-[40px] -z-10" />
 
           {/* Outer CTA Card Container with Crisp 1px Black Border */}
           <div className="bg-white border border-[#111111] rounded-[36px] p-10 lg:p-16 shadow-xs relative overflow-hidden">
@@ -1302,8 +1303,8 @@ export const AgencyLandingPage = () => {
             {/* Background Pale Light Watercolor Confetti & Floating Envelopes Layer */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
               
-              {/* Soft Gradient Pale Light Splash */}
-              <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-bl from-[#FF7EB6]/25 via-[#C084FC]/20 via-[#FFEAA7]/25 to-transparent blur-xl" />
+              {/* Vibrant Gradient Ambient Glow Splash */}
+              <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-bl from-[#C084FC]/30 via-[#00DDFF]/20 via-[#FFEAA7]/25 to-transparent blur-2xl" />
 
               {/* Colorful Watercolor Dots & Confetti Particles Overlay */}
               <svg className="absolute inset-0 w-full h-full opacity-75" preserveAspectRatio="none" viewBox="0 0 800 400" fill="none">
@@ -1375,33 +1376,14 @@ export const AgencyLandingPage = () => {
                 </div>
               </div>
 
-              {/* Right Mini Preview Card with Soft Gradient Shadow */}
+              {/* Right Widescreen PNG Showcase Image with Transparent Blend & Black Drop Shadow */}
               <div className="lg:col-span-5 hidden lg:block">
-                <div className="relative">
-                  <div className="absolute -inset-2 bg-gradient-to-r from-[#FF7EB6]/35 to-[#C084FC]/35 blur-xl rounded-[24px] -z-10" />
-                  <div className="bg-white/90 backdrop-blur-md border border-[#111111] rounded-[20px] p-6 shadow-sm">
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-xs font-bold text-[#111111]">Live Analytics</span>
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                    </div>
-                    <div className="space-y-3">
-                      <div className="bg-white p-3.5 rounded-xl border border-[#ECECEC] flex items-center justify-between shadow-2xs">
-                        <div>
-                          <div className="text-[10px] text-[#8A8A8A] font-bold">Open Rate</div>
-                          <div className="text-base font-extrabold text-[#111111]">42.7%</div>
-                        </div>
-                        <span className="text-xs text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded-md">↑ +9.2%</span>
-                      </div>
-
-                      <div className="bg-white p-3.5 rounded-xl border border-[#ECECEC] flex items-center justify-between shadow-2xs">
-                        <div>
-                          <div className="text-[10px] text-[#8A8A8A] font-bold">Revenue Generated</div>
-                          <div className="text-base font-extrabold text-[#111111]">$18,240</div>
-                        </div>
-                        <span className="text-xs text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded-md">↑ +34.5%</span>
-                      </div>
-                    </div>
-                  </div>
+                <div className="transition-transform duration-300 hover:-translate-y-1">
+                  <img
+                    src={mailallyBanner}
+                    alt="MailAlly Banner Showcase"
+                    className="w-full aspect-[16/10] object-contain rounded-[24px] mix-blend-multiply drop-shadow-[0_20px_35px_rgba(0,0,0,0.25)]"
+                  />
                 </div>
               </div>
 
@@ -1411,10 +1393,10 @@ export const AgencyLandingPage = () => {
       </section>
 
       {/* ─── FOOTER (FULL WIDTH TO WEBSITE WITH FLUSH BOTTOM EDGE & TOP CURVES) ─── */}
-      <footer className="bg-[#0B0B0E] text-white pt-14 pb-10 px-6 lg:px-16 w-full border-t border-[#222225] mt-16 rounded-t-[36px] rounded-b-none relative overflow-hidden font-sans">
+      <footer className="bg-black text-white pt-14 pb-10 px-6 lg:px-16 w-full border-t border-[#1F1F24] mt-16 rounded-t-[36px] rounded-b-none relative overflow-hidden font-sans">
         
-        {/* Soft Ambient Glow (Right Side Neon Pink Radial Glow) */}
-        <div className="pointer-events-none absolute top-0 right-0 w-[500px] h-full bg-gradient-to-l from-[#FF7EB6]/15 via-[#C084FC]/5 to-transparent blur-3xl rounded-full -z-10" />
+        {/* Soft Ambient Glow (Landing Page Gradient Radial Glow) */}
+        <div className="pointer-events-none absolute top-0 right-0 w-[500px] h-full bg-gradient-to-l from-[#C084FC]/10 via-[#FFB88C]/5 to-transparent blur-3xl rounded-full -z-10" />
 
         <div className="max-w-[1240px] mx-auto">
           
@@ -1425,27 +1407,27 @@ export const AgencyLandingPage = () => {
             <div className="md:col-span-5 pr-0 md:pr-8 lg:pr-12 flex flex-col justify-between space-y-4">
               <div>
                 <Link to="/" className="inline-flex items-center gap-3 group">
-                  <CometLogo size="lg" />
+                  <img src="/envelope_outreach.png" alt="MailAlly Footer Icon" className="w-11 h-11 object-contain rounded-xl shadow-xs flex-shrink-0 transition-transform duration-200 group-hover:scale-105" />
                   <span className="text-2xl font-extrabold tracking-tight text-white">
-                    MailAlly<span className="text-[#FF7EB6]">.</span>
+                    MailAlly<span className="bg-gradient-to-r from-[#C084FC] to-[#FFB88C] bg-clip-text text-transparent">.</span>
                   </span>
                 </Link>
 
-                <p className="text-xs sm:text-sm text-gray-300 font-medium leading-relaxed max-w-sm mt-4">
+                <p className="text-xs sm:text-sm text-gray-400 font-medium leading-relaxed max-w-sm mt-4">
                   AI email marketing engine built for high deliverability, smart segmentation, and automated cold outreach sequences.
                 </p>
               </div>
 
-              {/* Marcamor Pill Badge with Pink Glow */}
+              {/* Marcamor Pill Badge with Gradient Glow */}
               <div>
                 <a
                   href="https://marcamor.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-[#141419] border border-[#FF7EB6]/30 shadow-[0_0_15px_rgba(255,126,182,0.12)] hover:border-[#FF7EB6] transition-all duration-300 text-xs font-bold text-gray-300 hover:text-white group"
+                  className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-[#111115] border border-[#2A2A35] shadow-xs hover:border-[#C084FC] transition-all duration-300 text-xs font-bold text-gray-300 hover:text-white group"
                 >
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#FF7EB6] shadow-[0_0_8px_#FF7EB6] group-hover:animate-ping" />
-                  <span>A product by <strong className="text-[#FF7EB6] font-extrabold">Marcamor Company</strong></span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-[#C084FC] to-[#FFB88C] shadow-[0_0_8px_#C084FC] group-hover:animate-ping" />
+                  <span>A product by <strong className="bg-gradient-to-r from-[#C084FC] to-[#FFB88C] bg-clip-text text-transparent font-extrabold">Marcamor Company</strong></span>
                   <ArrowUpRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-white" />
                 </a>
               </div>
@@ -1453,61 +1435,61 @@ export const AgencyLandingPage = () => {
 
             {/* Column 2: Navigation Links with Vertical Dividers (3 Cols) */}
             <div className="md:col-span-3 px-0 md:px-8 lg:px-12 border-t md:border-t-0 md:border-l md:border-r border-[#222225] pt-6 md:pt-0">
-              <h4 className="text-xs font-black tracking-widest text-[#FF7EB6] uppercase mb-4">NAVIGATION</h4>
-              <ul className="space-y-3 text-xs sm:text-sm text-gray-200 font-semibold">
+              <h4 className="text-xs font-black tracking-widest bg-gradient-to-r from-[#C084FC] via-[#FFB88C] to-[#A7F3D0] bg-clip-text text-transparent uppercase mb-4">NAVIGATION</h4>
+              <ul className="space-y-3 text-xs sm:text-sm text-gray-300 font-semibold">
                 <li>
                   <a href="#features" className="inline-flex items-center gap-2 hover:text-white transition-colors group">
-                    <ChevronRight className="w-3.5 h-3.5 text-[#FF7EB6] group-hover:translate-x-0.5 transition-transform" />
+                    <ChevronRight className="w-3.5 h-3.5 text-[#C084FC] group-hover:translate-x-0.5 transition-transform" />
                     <span>Features</span>
                   </a>
                 </li>
                 <li>
                   <a href="#workflow" className="inline-flex items-center gap-2 hover:text-white transition-colors group">
-                    <ChevronRight className="w-3.5 h-3.5 text-[#FF7EB6] group-hover:translate-x-0.5 transition-transform" />
+                    <ChevronRight className="w-3.5 h-3.5 text-[#C084FC] group-hover:translate-x-0.5 transition-transform" />
                     <span>How it Works</span>
                   </a>
                 </li>
                 <li>
                   <a href="#pricing" className="inline-flex items-center gap-2 hover:text-white transition-colors group">
-                    <ChevronRight className="w-3.5 h-3.5 text-[#FF7EB6] group-hover:translate-x-0.5 transition-transform" />
+                    <ChevronRight className="w-3.5 h-3.5 text-[#C084FC] group-hover:translate-x-0.5 transition-transform" />
                     <span>Pricing Plans</span>
                   </a>
                 </li>
                 <li>
                   <a href="#testimonials" className="inline-flex items-center gap-2 hover:text-white transition-colors group">
-                    <ChevronRight className="w-3.5 h-3.5 text-[#FF7EB6] group-hover:translate-x-0.5 transition-transform" />
+                    <ChevronRight className="w-3.5 h-3.5 text-[#C084FC] group-hover:translate-x-0.5 transition-transform" />
                     <span>Client Reviews</span>
                   </a>
                 </li>
                 <li>
                   <a href="#faq" className="inline-flex items-center gap-2 hover:text-white transition-colors group">
-                    <ChevronRight className="w-3.5 h-3.5 text-[#FF7EB6] group-hover:translate-x-0.5 transition-transform" />
+                    <ChevronRight className="w-3.5 h-3.5 text-[#C084FC] group-hover:translate-x-0.5 transition-transform" />
                     <span>FAQ & Support</span>
                   </a>
                 </li>
               </ul>
             </div>
 
-            {/* Column 3: Subscribe to Updates with Glowing White Capsule Input (4 Cols) */}
+            {/* Column 3: Subscribe to Updates with Glowing Dark Capsule Input (4 Cols) */}
             <div className="md:col-span-4 pl-0 md:pl-8 lg:pl-12 pt-6 md:pt-0 space-y-3.5">
-              <h4 className="text-xs font-black tracking-widest text-[#FF7EB6] uppercase mb-3">SUBSCRIBE TO UPDATES</h4>
-              <p className="text-xs sm:text-sm text-gray-300 font-medium leading-relaxed">
+              <h4 className="text-xs font-black tracking-widest bg-gradient-to-r from-[#C084FC] via-[#FFB88C] to-[#A7F3D0] bg-clip-text text-transparent uppercase mb-3">SUBSCRIBE TO UPDATES</h4>
+              <p className="text-xs sm:text-sm text-gray-400 font-medium leading-relaxed">
                 Get weekly deliverability benchmarks and AI copywriting tips.
               </p>
               
-              {/* Capsule Shape Glowing White Input Box */}
-              <div className="relative flex items-center w-full bg-white rounded-full p-1.5 border-2 border-[#FF7EB6] shadow-[0_0_25px_rgba(255,126,182,0.45)] mt-4">
-                <Mail className="w-5 h-5 text-[#FF7EB6] ml-3 flex-shrink-0" />
+              {/* Capsule Shape Sleek Dark Input Box */}
+              <div className="relative flex items-center w-full bg-[#121216] rounded-full p-1.5 border border-[#2A2A35] focus-within:border-[#C084FC] shadow-sm mt-4">
+                <Mail className="w-5 h-5 text-gray-400 ml-3 flex-shrink-0" />
                 <input
                   type="email"
                   placeholder="Enter your work email"
-                  className="w-full bg-transparent text-gray-900 placeholder:text-gray-400 font-semibold text-xs sm:text-sm px-3 focus:outline-none"
+                  className="w-full bg-transparent text-white placeholder:text-gray-500 font-semibold text-xs sm:text-sm px-3 focus:outline-none"
                 />
                 <button
                   aria-label="Subscribe"
-                  className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#FF7EB6] to-[#E052A0] text-white flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition-all flex-shrink-0 cursor-pointer"
+                  className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#C084FC] via-[#FFB88C] to-[#A7F3D0] text-black font-extrabold flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition-all flex-shrink-0 cursor-pointer"
                 >
-                  <Send className="w-4 h-4 text-white -mr-0.5" />
+                  <Send className="w-4 h-4 text-black -mr-0.5" />
                 </button>
               </div>
             </div>
@@ -1515,18 +1497,18 @@ export const AgencyLandingPage = () => {
           </div>
 
           {/* Bottom Bar: Social Icons + Copyright + Separated Legal Links */}
-          <div className="pt-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs sm:text-sm text-gray-300 font-semibold">
+          <div className="pt-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs sm:text-sm text-gray-400 font-semibold">
             
-            {/* Left: Glowing Social Icon Buttons */}
+            {/* Left: Sleek Social Icon Buttons */}
             <div className="flex items-center gap-3">
               <a
                 href="https://marcamor.com"
                 target="_blank"
                 rel="noopener noreferrer"
                 title="Marcamor Official Website"
-                className="w-9 h-9 rounded-xl bg-[#141419] border border-[#FF7EB6]/30 shadow-[0_0_12px_rgba(255,126,182,0.15)] flex items-center justify-center text-white hover:border-[#FF7EB6] hover:bg-[#1E1E26] transition-all cursor-pointer"
+                className="w-9 h-9 rounded-xl bg-[#141419] border border-[#262630] flex items-center justify-center text-white hover:border-[#C084FC] hover:bg-[#1E1E26] transition-all cursor-pointer"
               >
-                <Globe className="w-4 h-4 text-white" />
+                <Globe className="w-4 h-4 text-gray-300" />
               </a>
 
               <a
@@ -1534,9 +1516,9 @@ export const AgencyLandingPage = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 title="Marcamor X (Twitter)"
-                className="w-9 h-9 rounded-xl bg-[#141419] border border-[#FF7EB6]/30 shadow-[0_0_12px_rgba(255,126,182,0.15)] flex items-center justify-center text-white hover:border-[#FF7EB6] hover:bg-[#1E1E26] transition-all cursor-pointer"
+                className="w-9 h-9 rounded-xl bg-[#141419] border border-[#262630] flex items-center justify-center text-white hover:border-[#C084FC] hover:bg-[#1E1E26] transition-all cursor-pointer"
               >
-                <svg className="w-3.5 h-3.5 fill-white" viewBox="0 0 24 24">
+                <svg className="w-3.5 h-3.5 fill-gray-300" viewBox="0 0 24 24">
                   <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
                 </svg>
               </a>
@@ -1546,9 +1528,9 @@ export const AgencyLandingPage = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 title="Marcamor LinkedIn"
-                className="w-9 h-9 rounded-xl bg-[#141419] border border-[#FF7EB6]/30 shadow-[0_0_12px_rgba(255,126,182,0.15)] flex items-center justify-center text-white hover:border-[#FF7EB6] hover:bg-[#1E1E26] transition-all cursor-pointer"
+                className="w-9 h-9 rounded-xl bg-[#141419] border border-[#262630] flex items-center justify-center text-white hover:border-[#C084FC] hover:bg-[#1E1E26] transition-all cursor-pointer"
               >
-                <svg className="w-3.5 h-3.5 fill-white" viewBox="0 0 24 24">
+                <svg className="w-3.5 h-3.5 fill-gray-300" viewBox="0 0 24 24">
                   <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.25V10.9H6.46M7.86 6.74a1.62 1.62 0 1 0 0 3.24 1.62 1.62 0 0 0 0-3.24z"/>
                 </svg>
               </a>
@@ -1558,9 +1540,9 @@ export const AgencyLandingPage = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 title="Marcamor GitHub"
-                className="w-9 h-9 rounded-xl bg-[#141419] border border-[#FF7EB6]/30 shadow-[0_0_12px_rgba(255,126,182,0.15)] flex items-center justify-center text-white hover:border-[#FF7EB6] hover:bg-[#1E1E26] transition-all cursor-pointer"
+                className="w-9 h-9 rounded-xl bg-[#141419] border border-[#262630] flex items-center justify-center text-white hover:border-[#C084FC] hover:bg-[#1E1E26] transition-all cursor-pointer"
               >
-                <svg className="w-4 h-4 fill-white" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 fill-gray-300" viewBox="0 0 24 24">
                   <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
                 </svg>
               </a>
@@ -1570,25 +1552,25 @@ export const AgencyLandingPage = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 title="Marcamor Community"
-                className="w-9 h-9 rounded-xl bg-[#141419] border border-[#FF7EB6]/30 shadow-[0_0_12px_rgba(255,126,182,0.15)] flex items-center justify-center text-white hover:border-[#FF7EB6] hover:bg-[#1E1E26] transition-all cursor-pointer"
+                className="w-9 h-9 rounded-xl bg-[#141419] border border-[#262630] flex items-center justify-center text-white hover:border-[#C084FC] hover:bg-[#1E1E26] transition-all cursor-pointer"
               >
-                <svg className="w-4 h-4 fill-white" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 fill-gray-300" viewBox="0 0 24 24">
                   <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
                 </svg>
               </a>
             </div>
 
             {/* Center: Copyright */}
-            <div className="text-xs text-gray-300 font-semibold">
-              © 2026 <strong className="text-white font-bold">MailAlly</strong> by <a href="https://marcamor.com" target="_blank" rel="noopener noreferrer" className="text-[#FF7EB6] font-bold hover:underline">Marcamor Company</a>.
+            <div className="text-xs text-gray-400 font-semibold">
+              © 2026 <strong className="text-white font-bold">MailAlly</strong> by <a href="https://marcamor.com" target="_blank" rel="noopener noreferrer" className="bg-gradient-to-r from-[#C084FC] to-[#FFB88C] bg-clip-text text-transparent font-bold hover:underline">Marcamor Company</a>.
             </div>
 
             {/* Right: Legal Links with Vertical Line Separators */}
-            <div className="flex items-center gap-3 text-xs text-gray-300 font-semibold">
+            <div className="flex items-center gap-3 text-xs text-gray-400 font-semibold">
               <a href="#faq" className="hover:text-white transition-colors">Privacy Policy</a>
-              <span className="text-gray-600">|</span>
+              <span className="text-gray-700">|</span>
               <a href="#faq" className="hover:text-white transition-colors">Terms of Service</a>
-              <span className="text-gray-600">|</span>
+              <span className="text-gray-700">|</span>
               <a href="#faq" className="hover:text-white transition-colors">Security</a>
             </div>
 

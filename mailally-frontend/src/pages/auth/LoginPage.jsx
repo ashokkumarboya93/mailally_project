@@ -249,7 +249,6 @@ export const LoginPage = () => {
                   onClick={() => {
                     setEmail('admin@mailally.com');
                     setPassword('password123');
-                    alert('Google OAuth connected. Logging in as Admin.');
                   }}
                   className="flex items-center justify-center gap-2 h-10 px-3 rounded-xl border border-[#18181B] hover:bg-[#FAFAFA] text-xs font-bold text-[#18181B] transition-colors cursor-pointer"
                 >
@@ -267,7 +266,6 @@ export const LoginPage = () => {
                   onClick={() => {
                     setEmail('ashok@mailally.com');
                     setPassword('password123');
-                    alert('Microsoft OAuth connected. Logging in as Ashok.');
                   }}
                   className="flex items-center justify-center gap-2 h-10 px-3 rounded-xl border border-[#18181B] hover:bg-[#FAFAFA] text-xs font-bold text-[#18181B] transition-colors cursor-pointer"
                 >

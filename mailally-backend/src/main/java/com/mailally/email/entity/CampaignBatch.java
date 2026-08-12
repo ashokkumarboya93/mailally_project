@@ -37,6 +37,12 @@ public class CampaignBatch {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
+    @Column(name = "idempotency_key", length = 100)
+    private String idempotencyKey;
+
+    @Column(name = "provider_batch_id", length = 150)
+    private String providerBatchId;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -84,6 +90,12 @@ public class CampaignBatch {
     public LocalDateTime getCompletedAt() { return completedAt; }
     public void setCompletedAt(LocalDateTime completedAt) { this.completedAt = completedAt; }
 
+    public String getIdempotencyKey() { return idempotencyKey; }
+    public void setIdempotencyKey(String idempotencyKey) { this.idempotencyKey = idempotencyKey; }
+
+    public String getProviderBatchId() { return providerBatchId; }
+    public void setProviderBatchId(String providerBatchId) { this.providerBatchId = providerBatchId; }
+
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
@@ -96,6 +108,7 @@ public class CampaignBatch {
         if (this.updatedAt == null) this.updatedAt = LocalDateTime.now();
         if (this.status == null) this.status = "PENDING";
         if (this.retryCount == null) this.retryCount = 0;
+        if (this.idempotencyKey == null) this.idempotencyKey = java.util.UUID.randomUUID().toString();
     }
 
     @PreUpdate

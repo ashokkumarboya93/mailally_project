@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { campaignApi, segmentApi, templateApi } from '../../api/campaignApi';
+import { AlertModal } from '../../components/common/AlertModal';
 import { Check, ArrowRight, Send, Layers, Rocket } from 'lucide-react';
 
 export const CampaignWizardPage = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
+  const [alertConfig, setAlertConfig] = useState({ isOpen: false, type: 'success', title: '', message: '' });
   const [formData, setFormData] = useState({
     name: '',
     type: 'REGULAR',
@@ -15,7 +17,7 @@ export const CampaignWizardPage = () => {
     subject: '',
     templateId: '',
     segmentId: '',
-    batchSize: 500
+    batchSize: 100
   });
   const [templates, setTemplates] = useState([]);
   const [segments, setSegments] = useState([]);
@@ -158,8 +160,12 @@ export const CampaignWizardPage = () => {
       const createResponse = await campaignApi.createCampaign(payload);
       const createdCampaign = unwrapData(createResponse);
       await campaignApi.launchCampaign(createdCampaign.id, payload.batchSize);
-      alert('Campaign launched successfully!');
-      navigate('/campaigns');
+      setAlertConfig({
+        isOpen: true,
+        type: 'success',
+        title: 'Campaign Launched',
+        message: 'Campaign launched successfully! Redirecting to dashboard...'
+      });
     } catch (err) {
       setError('Failed to launch campaign: ' + (err.response?.data?.message || err.message));
     } finally {
@@ -260,13 +266,19 @@ export const CampaignWizardPage = () => {
                 />
               </div>
               <div>
-                <label className="ma-label">Batch Size *</label>
-                <input
-                  type="number"
+                <label className="ma-label">Batch Size (Recipients per Batch)</label>
+                <select
                   value={formData.batchSize}
-                  onChange={(e) => setFormData({ ...formData, batchSize: e.target.value })}
-                  className="ma-input"
-                />
+                  onChange={(e) => setFormData({ ...formData, batchSize: Number(e.target.value) })}
+                  className="ma-select cursor-pointer"
+                >
+                  <option value={100}>100 recipients / batch (Default)</option>
+                  <option value={250}>250 recipients / batch</option>
+                  <option value={500}>500 recipients / batch (Maximum)</option>
+                </select>
+                <span className="text-[11px] text-slate-400 font-medium block mt-1">
+                  Maximum 500 recipients per MailAlly internal batch.
+                </span>
               </div>
             </div>
           </div>
@@ -359,6 +371,17 @@ export const CampaignWizardPage = () => {
           )}
         </div>
       </div>
+
+      <AlertModal
+        isOpen={alertConfig.isOpen}
+        onClose={() => {
+          setAlertConfig(prev => ({ ...prev, isOpen: false }));
+          navigate('/campaigns');
+        }}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+      />
     </div>
   );
 };
