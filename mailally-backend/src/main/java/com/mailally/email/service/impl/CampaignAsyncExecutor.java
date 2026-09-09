@@ -60,6 +60,8 @@ public class CampaignAsyncExecutor {
     private final EmailProviderFactory providerFactory;
     private final TemplateRenderer templateRenderer;
     private final EmailEngineConfig config;
+    private final com.mailally.email.service.EmailIdempotencyService idempotencyService;
+    private final com.mailally.email.service.CampaignStateMachine stateMachine;
 
     /** Registry of SSE emitters keyed by campaignId for live progress streaming */
     private final ConcurrentHashMap<Long, CopyOnWriteArrayList<SseEmitter>> sseEmitters = new ConcurrentHashMap<>();
@@ -73,7 +75,9 @@ public class CampaignAsyncExecutor {
                                  com.mailally.email.repository.EmailEventRepository emailEventRepository,
                                  EmailProviderFactory providerFactory,
                                  TemplateRenderer templateRenderer,
-                                 EmailEngineConfig config) {
+                                 EmailEngineConfig config,
+                                 com.mailally.email.service.EmailIdempotencyService idempotencyService,
+                                 com.mailally.email.service.CampaignStateMachine stateMachine) {
         this.campaignRepository = campaignRepository;
         this.contactRepository = contactRepository;
         this.organizationRepository = organizationRepository;
@@ -84,6 +88,8 @@ public class CampaignAsyncExecutor {
         this.providerFactory = providerFactory;
         this.templateRenderer = templateRenderer;
         this.config = config;
+        this.idempotencyService = idempotencyService;
+        this.stateMachine = stateMachine;
     }
 
     /**
@@ -128,146 +134,205 @@ public class CampaignAsyncExecutor {
                     : campaign.getSenderName() != null ? campaign.getSenderName() : config.getDefaultSenderName();
             String fromEmail = campaign.getSenderEmail() != null ? campaign.getSenderEmail() : config.getDefaultSenderEmail();
             int effectiveBatchSize = batchSize != null && batchSize > 0 ? batchSize : 500;
-
-            int sent = 0;
-            int failed = 0;
-            int index = 0;
             int totalContacts = contacts.size();
 
-            log.info("=== ASYNC CAMPAIGN [{}] STARTED — {} recipients, Provider: {} ===",
+            java.util.concurrent.ConcurrentLinkedQueue<Email> emailLogsToSave = new java.util.concurrent.ConcurrentLinkedQueue<>();
+            java.util.concurrent.ConcurrentLinkedQueue<EmailQueue> queueToSave = new java.util.concurrent.ConcurrentLinkedQueue<>();
+            java.util.concurrent.ConcurrentLinkedQueue<com.mailally.email.entity.CampaignRecipientLog> recipientLogsToSave = new java.util.concurrent.ConcurrentLinkedQueue<>();
+            java.util.concurrent.ConcurrentLinkedQueue<com.mailally.email.entity.EmailEvent> eventsToSave = new java.util.concurrent.ConcurrentLinkedQueue<>();
+
+            java.util.concurrent.atomic.AtomicInteger sentCounter = new java.util.concurrent.atomic.AtomicInteger(0);
+            java.util.concurrent.atomic.AtomicInteger failedCounter = new java.util.concurrent.atomic.AtomicInteger(0);
+            java.util.concurrent.atomic.AtomicInteger indexCounter = new java.util.concurrent.atomic.AtomicInteger(0);
+            java.util.concurrent.atomic.AtomicBoolean cancelled = new java.util.concurrent.atomic.AtomicBoolean(false);
+
+            // Enforce Campaign State Machine validation
+            stateMachine.validateTransition(campaign.getStatus(), "RUNNING");
+            campaign.setStatus("RUNNING");
+            campaignRepository.save(campaign);
+
+            log.info("=== ASYNC CAMPAIGN [{}] HIGH-SPEED BATCH DISPATCH STARTED — {} recipients, Provider: {} ===",
                     campaign.getName(), totalContacts, config.getActiveProvider());
 
-            for (Contact contact : contacts) {
-                // Check if campaign was cancelled mid-execution
-                Campaign freshCampaign = campaignRepository.findById(campaignId).orElse(null);
-                if (freshCampaign != null && "CANCELLED".equalsIgnoreCase(freshCampaign.getStatus())) {
-                    log.warn("Campaign {} cancelled mid-execution at index {}/{}", campaignId, index, totalContacts);
-                    emitProgressEvent(campaignId, buildProgressDto(campaign, totalContacts, sent, failed,
-                            totalContacts - sent - failed, "CANCELLED"));
-                    return;
+            int chunkSize = Math.min(effectiveBatchSize, 300);
+            List<List<Contact>> contactBatches = new ArrayList<>();
+            for (int i = 0; i < contacts.size(); i += chunkSize) {
+                contactBatches.add(contacts.subList(i, Math.min(i + chunkSize, contacts.size())));
+            }
+
+            int batchIndex = 0;
+            for (List<Contact> contactChunk : contactBatches) {
+                if (cancelled.get()) {
+                    break;
                 }
 
-                int batchNumber = (index / effectiveBatchSize) + 1;
+                batchIndex++;
+                Campaign freshCampaign = campaignRepository.findById(campaignId).orElse(null);
+                if (freshCampaign != null && "CANCELLED".equalsIgnoreCase(freshCampaign.getStatus())) {
+                    cancelled.set(true);
+                    log.warn("Campaign {} cancelled mid-execution at batch {}/{}", campaignId, batchIndex, contactBatches.size());
+                    break;
+                }
 
-                // Render personalized content using pre-loaded template data (NOT lazy-loaded)
-                String personalizedSubject = templateRenderer.render(
-                        campaign.getSubject() != null ? campaign.getSubject() : templateSubject, contact);
-                String personalizedBody = templateRenderer.render(templateHtmlContent, contact);
+                List<com.mailally.email.provider.RecipientBatchItem> batchItems = new ArrayList<>();
+                List<Contact> validContactsInBatch = new ArrayList<>();
 
-                // Send email via provider with failover
-                EmailSendResult result = providerFactory.sendWithFailover(
-                        contact.getEmail(),
-                        contact.getFirstName(),
+                for (Contact contact : contactChunk) {
+                    if (idempotencyService.isAlreadyProcessed(campaignId, contact.getEmail())) {
+                        log.info("Idempotency Guard: Skipping processed recipient {} for campaign {}", contact.getEmail(), campaignId);
+                        sentCounter.incrementAndGet();
+                        continue;
+                    }
+                    idempotencyService.markProcessed(campaignId, contact.getEmail());
+
+                    String personalizedSubject = templateRenderer.render(
+                            campaign.getSubject() != null ? campaign.getSubject() : templateSubject, contact);
+                    String personalizedBody = templateRenderer.render(templateHtmlContent, contact);
+
+                    batchItems.add(new com.mailally.email.provider.RecipientBatchItem(
+                            null,
+                            contact.getEmail(),
+                            contact.getFirstName(),
+                            contact.getLastName(),
+                            null,
+                            personalizedSubject,
+                            personalizedBody
+                    ));
+                    validContactsInBatch.add(contact);
+                }
+
+                if (batchItems.isEmpty()) {
+                    continue;
+                }
+
+                String idempotencyKey = "CMP-" + campaignId + "-B" + batchIndex + "-" + System.currentTimeMillis();
+
+                // High-speed bulk batch dispatch (Brevo/SES REST API)
+                com.mailally.email.provider.BatchSendResult batchResult = providerFactory.sendBatchWithFailover(
+                        batchItems,
                         fromEmail,
                         fromName,
                         campaign.getReplyTo(),
-                        personalizedSubject,
-                        personalizedBody
+                        campaign.getSubject() != null ? campaign.getSubject() : templateSubject,
+                        templateHtmlContent,
+                        idempotencyKey
                 );
 
-                // Save email log — uses directly-loaded org (NOT campaign.getOrganization() which is a lazy proxy)
-                Email emailLog = Email.builder()
-                        .organization(org)
-                        .campaign(campaign)
-                        .contact(contact)
-                        .recipientEmail(contact.getEmail())
-                        .recipientName(contact.getFirstName())
-                        .subject(personalizedSubject)
-                        .provider(result.getProviderName())
-                        .status(result.isSuccess() ? "SENT" : "FAILED")
-                        .responseId(result.getResponseId())
-                        .errorMessage(result.getErrorMessage())
-                        .sentAt(result.isSuccess() ? LocalDateTime.now() : null)
-                        .failedAt(result.isSuccess() ? null : LocalDateTime.now())
-                        .createdBy(userId)
-                        .build();
-                emailRepository.save(emailLog);
+                boolean isBatchSuccess = batchResult.isSuccess();
+                String providerUsed = batchResult.getProviderName();
 
-                // Save queue entry
-                emailQueueRepository.save(EmailQueue.builder()
-                        .organization(org)
-                        .campaign(campaign)
-                        .contact(contact)
-                        .recipientEmail(contact.getEmail())
-                        .recipientName(contact.getFirstName())
-                        .personalizedSubject(personalizedSubject)
-                        .personalizedHtml(personalizedBody)
-                        .provider(result.getProviderName())
-                        .status(result.isSuccess() ? "SENT" : "FAILED")
-                        .retryCount(0)
-                        .maxRetries(config.getMaxRetries())
-                        .failureReason(result.getErrorMessage())
-                        .batchNumber(batchNumber)
-                        .processedAt(LocalDateTime.now())
-                        .createdBy(userId)
-                        .build());
+                for (int j = 0; j < validContactsInBatch.size(); j++) {
+                    Contact contact = validContactsInBatch.get(j);
+                    com.mailally.email.provider.RecipientBatchItem item = batchItems.get(j);
+                    String messageId = batchResult.getRecipientMsgIdMap() != null ? batchResult.getRecipientMsgIdMap().get(item.getRecipientLogId()) : batchResult.getBatchMessageId();
+                    if (messageId == null) messageId = batchResult.getBatchMessageId();
 
-                // Save V2 CampaignRecipientLog for analytics recipient table mapping
-                com.mailally.email.entity.CampaignRecipientLog recipientLog = com.mailally.email.entity.CampaignRecipientLog.builder()
-                        .campaign(campaign)
-                        .contact(contact)
-                        .email(contact.getEmail())
-                        .status(result.isSuccess() ? "SENT" : "FAILED")
-                        .provider(result.getProviderName())
-                        .providerMessageId(result.getResponseId())
-                        .attempts(1)
-                        .lastError(result.getErrorMessage())
-                        .smtpResponseCode(result.getSmtpResponseCode())
-                        .createdAt(LocalDateTime.now())
-                        .build();
-                recipientLogRepository.save(recipientLog);
+                    // Buffer email log
+                    emailLogsToSave.add(Email.builder()
+                            .organization(org)
+                            .campaign(campaign)
+                            .contact(contact)
+                            .recipientEmail(contact.getEmail())
+                            .recipientName(contact.getFirstName())
+                            .subject(item.getPersonalizedSubject())
+                            .provider(providerUsed)
+                            .status(isBatchSuccess ? "SENT" : "FAILED")
+                            .responseId(messageId)
+                            .errorMessage(isBatchSuccess ? null : batchResult.getErrorMessage())
+                            .sentAt(isBatchSuccess ? LocalDateTime.now() : null)
+                            .failedAt(isBatchSuccess ? null : LocalDateTime.now())
+                            .createdBy(userId)
+                            .build());
 
-                // Save immutable EmailEvent for analytics aggregation engine
-                com.mailally.email.entity.EmailEvent emailEvent = com.mailally.email.entity.EmailEvent.builder()
-                        .organizationId(organizationId)
-                        .campaign(campaign)
-                        .recipient(recipientLog)
-                        .eventType(result.isSuccess() ? com.mailally.email.constant.EmailEventType.SENT : com.mailally.email.constant.EmailEventType.BOUNCED)
-                        .provider(result.getProviderName())
-                        .providerMessageId(result.getResponseId())
-                        .timestamp(LocalDateTime.now())
-                        .occurredAt(LocalDateTime.now())
-                        .build();
-                emailEventRepository.save(emailEvent);
+                    // Buffer queue entry
+                    queueToSave.add(EmailQueue.builder()
+                            .organization(org)
+                            .campaign(campaign)
+                            .contact(contact)
+                            .recipientEmail(contact.getEmail())
+                            .recipientName(contact.getFirstName())
+                            .personalizedSubject(item.getPersonalizedSubject())
+                            .personalizedHtml(item.getPersonalizedHtml())
+                            .provider(providerUsed)
+                            .status(isBatchSuccess ? "SENT" : "FAILED")
+                            .retryCount(0)
+                            .maxRetries(config.getMaxRetries())
+                            .failureReason(isBatchSuccess ? null : batchResult.getErrorMessage())
+                            .batchNumber(batchIndex)
+                            .processedAt(LocalDateTime.now())
+                            .createdBy(userId)
+                            .build());
 
-                if (result.isSuccess()) {
-                    sent++;
+                    // Buffer recipient log
+                    com.mailally.email.entity.CampaignRecipientLog recipientLog = com.mailally.email.entity.CampaignRecipientLog.builder()
+                            .campaign(campaign)
+                            .contact(contact)
+                            .email(contact.getEmail())
+                            .status(isBatchSuccess ? "SENT" : "FAILED")
+                            .provider(providerUsed)
+                            .providerMessageId(messageId)
+                            .attempts(1)
+                            .lastError(isBatchSuccess ? null : batchResult.getErrorMessage())
+                            .smtpResponseCode(isBatchSuccess ? "250 OK" : batchResult.getErrorCode())
+                            .createdAt(LocalDateTime.now())
+                            .build();
+                    recipientLogsToSave.add(recipientLog);
+
+                    // Buffer immutable EmailEvent
+                    eventsToSave.add(com.mailally.email.entity.EmailEvent.builder()
+                            .organizationId(organizationId)
+                            .campaign(campaign)
+                            .recipient(recipientLog)
+                            .eventType(isBatchSuccess ? com.mailally.email.constant.EmailEventType.SENT : com.mailally.email.constant.EmailEventType.BOUNCED)
+                            .provider(providerUsed)
+                            .providerMessageId(messageId)
+                            .timestamp(LocalDateTime.now())
+                            .occurredAt(LocalDateTime.now())
+                            .build());
+                }
+
+                if (isBatchSuccess) {
+                    sentCounter.addAndGet(validContactsInBatch.size());
                 } else {
-                    failed++;
+                    failedCounter.addAndGet(validContactsInBatch.size());
                 }
-                index++;
 
-                // Update campaign progress — auto-commits immediately (no surrounding transaction)
-                campaign.setSentCount(sent);
-                campaign.setFailedCount(failed);
-                campaignRepository.save(campaign);
+                int currentSent = sentCounter.get();
+                int currentFailed = failedCounter.get();
+                int pending = totalContacts - currentSent - currentFailed;
 
-                // Emit SSE progress event to all connected clients
-                int pending = totalContacts - sent - failed;
-                CampaignProgressDto progressDto = buildProgressDto(campaign, totalContacts, sent, failed, pending, "RUNNING");
+                // Broadcast live SSE progress updates per batch
+                CampaignProgressDto progressDto = buildProgressDto(campaign, totalContacts, currentSent, currentFailed, pending, "RUNNING");
                 emitProgressEvent(campaignId, progressDto);
-
-                if (index % 10 == 0) {
-                    log.info("Campaign [{}] progress: {}/{} sent, {}/{} failed, {}/{} remaining",
-                            campaign.getName(), sent, totalContacts, failed, totalContacts, pending, totalContacts);
-                }
             }
+
+            if (cancelled.get()) {
+                emitProgressEvent(campaignId, buildProgressDto(campaign, totalContacts, sentCounter.get(), failedCounter.get(),
+                        totalContacts - sentCounter.get() - failedCounter.get(), "CANCELLED"));
+                return;
+            }
+
+            // High-Speed Bulk Batch Database Persistence
+            flushBatchLogs(emailLogsToSave, queueToSave, recipientLogsToSave, eventsToSave);
+
+            int finalSent = sentCounter.get();
+            int finalFailed = failedCounter.get();
 
             // Mark campaign completed
             campaign.setStatus("COMPLETED");
-            campaign.setSentCount(sent);
-            campaign.setFailedCount(failed);
+            campaign.setSentCount(finalSent);
+            campaign.setFailedCount(finalFailed);
             campaignRepository.save(campaign);
 
             // Emit final COMPLETED event
-            CampaignProgressDto completedDto = buildProgressDto(campaign, totalContacts, sent, failed, 0, "COMPLETED");
+            CampaignProgressDto completedDto = buildProgressDto(campaign, totalContacts, finalSent, finalFailed, 0, "COMPLETED");
             emitProgressEvent(campaignId, completedDto);
 
             // Complete and cleanup all emitters for this campaign
             completeAllEmitters(campaignId);
 
             log.info("=== ASYNC CAMPAIGN [{}] COMPLETED — Sent: {}, Failed: {}, Total: {} ===",
-                    campaign.getName(), sent, failed, totalContacts);
+                    campaign.getName(), finalSent, finalFailed, totalContacts);
 
         } catch (Exception ex) {
             log.error("Async campaign execution FAILED for campaignId {}: {}", campaignId, ex.getMessage(), ex);
@@ -281,6 +346,60 @@ public class CampaignAsyncExecutor {
                 log.error("Failed to update campaign status after error: {}", innerEx.getMessage());
             }
             completeAllEmitters(campaignId);
+        }
+    }
+
+    /**
+     * Executes high-performance bulk batch database persistence.
+     */
+    private void flushBatchLogs(
+            java.util.concurrent.ConcurrentLinkedQueue<Email> emailLogsToSave,
+            java.util.concurrent.ConcurrentLinkedQueue<EmailQueue> queueToSave,
+            java.util.concurrent.ConcurrentLinkedQueue<com.mailally.email.entity.CampaignRecipientLog> recipientLogsToSave,
+            java.util.concurrent.ConcurrentLinkedQueue<com.mailally.email.entity.EmailEvent> eventsToSave) {
+
+        if (!emailLogsToSave.isEmpty()) {
+            List<Email> emails = new ArrayList<>();
+            Email item;
+            while ((item = emailLogsToSave.poll()) != null) {
+                emails.add(item);
+            }
+            if (!emails.isEmpty()) {
+                emailRepository.saveAll(emails);
+            }
+        }
+
+        if (!queueToSave.isEmpty()) {
+            List<EmailQueue> queues = new ArrayList<>();
+            EmailQueue item;
+            while ((item = queueToSave.poll()) != null) {
+                queues.add(item);
+            }
+            if (!queues.isEmpty()) {
+                emailQueueRepository.saveAll(queues);
+            }
+        }
+
+        if (!recipientLogsToSave.isEmpty()) {
+            List<com.mailally.email.entity.CampaignRecipientLog> logs = new ArrayList<>();
+            com.mailally.email.entity.CampaignRecipientLog item;
+            while ((item = recipientLogsToSave.poll()) != null) {
+                logs.add(item);
+            }
+            if (!logs.isEmpty()) {
+                recipientLogRepository.saveAll(logs);
+            }
+        }
+
+        if (!eventsToSave.isEmpty()) {
+            List<com.mailally.email.entity.EmailEvent> events = new ArrayList<>();
+            com.mailally.email.entity.EmailEvent item;
+            while ((item = eventsToSave.poll()) != null) {
+                events.add(item);
+            }
+            if (!events.isEmpty()) {
+                emailEventRepository.saveAll(events);
+            }
         }
     }
 

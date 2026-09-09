@@ -19,7 +19,11 @@ import java.time.LocalDateTime;
  * Entity representing a Contact in the contacts table.
  */
 @Entity
-@Table(name = "contacts")
+@Table(name = "contacts", indexes = {
+    @jakarta.persistence.Index(name = "idx_contacts_org_deleted", columnList = "organization_id, is_deleted"),
+    @jakarta.persistence.Index(name = "idx_contacts_org_email", columnList = "organization_id, email"),
+    @jakarta.persistence.Index(name = "idx_contacts_org_status", columnList = "organization_id, status")
+})
 public class Contact {
 
     @Id

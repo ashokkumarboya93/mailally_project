@@ -5,6 +5,7 @@ export const campaignApi = {
   getCampaignById: async (id) => (await axiosClient.get(`/campaigns/${id}`)).data,
   createCampaign: async (data) => (await axiosClient.post('/campaigns', data)).data,
   addCollectionToCampaign: async (id, collectionId) => (await axiosClient.post(`/campaigns/${id}/add-collection/${collectionId}`)).data,
+  addContactsToCampaign: async (id, contactIds) => (await axiosClient.post(`/campaigns/${id}/recipients/add`, contactIds)).data,
   getDiagnostics: async (id) => (await axiosClient.get(`/campaigns/${id}/diagnostics`)).data,
   attachTemplate: async (id, templateId) => (await axiosClient.post(`/campaigns/${id}/attach-template/${templateId}`)).data,
   launchCampaign: async (id) => (await axiosClient.post(`/campaigns/${id}/launch`)).data,
@@ -35,7 +36,12 @@ export const segmentApi = {
 };
 
 export const schedulerApi = {
-  getSchedules: async (page = 0, size = 10) => (await axiosClient.get('/scheduler', { params: { page, size } })).data,
+  getSchedules: async (page = 0, size = 50) => (await axiosClient.get('/scheduler', { params: { page, size } })).data,
+  scheduleCampaign: async (data) => (await axiosClient.post('/scheduler/schedule', data)).data,
+  launchNow: async (campaignId) => (await axiosClient.post('/scheduler/launch-now', { campaignId })).data,
   pauseSchedule: async (id) => (await axiosClient.patch(`/scheduler/${id}/pause`)).data,
-  resumeSchedule: async (id) => (await axiosClient.patch(`/scheduler/${id}/resume`)).data
+  resumeSchedule: async (id) => (await axiosClient.patch(`/scheduler/${id}/resume`)).data,
+  cancelSchedule: async (id) => (await axiosClient.patch(`/scheduler/${id}/cancel`)).data,
+  reschedule: async (id, newScheduledTime) => (await axiosClient.put(`/scheduler/${id}/reschedule`, { newScheduledTime })).data,
+  getStats: async () => (await axiosClient.get('/scheduler/statistics')).data
 };

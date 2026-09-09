@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { campaignApi, segmentApi, templateApi } from '../../api/campaignApi';
 import { AlertModal } from '../../components/common/AlertModal';
-import { Check, ArrowRight, Send, Layers, Rocket } from 'lucide-react';
+import { Check, ArrowRight, Send, Layers, Rocket, Zap, Clock, Calendar } from 'lucide-react';
 
 export const CampaignWizardPage = () => {
   const navigate = useNavigate();
@@ -17,7 +17,9 @@ export const CampaignWizardPage = () => {
     subject: '',
     templateId: '',
     segmentId: '',
-    batchSize: 100
+    batchSize: 100,
+    launchMode: 'INSTANT', // 'INSTANT' or 'SCHEDULED'
+    scheduledAt: ''
   });
   const [templates, setTemplates] = useState([]);
   const [segments, setSegments] = useState([]);
@@ -127,6 +129,8 @@ export const CampaignWizardPage = () => {
   };
   const handleBack = () => setStep((prev) => Math.max(prev - 1, 1));
 
+  const [launchedCampaignId, setLaunchedCampaignId] = useState(null);
+
   const handleSubmit = async () => {
     setSubmitting(true);
     setError('');
@@ -146,28 +150,45 @@ export const CampaignWizardPage = () => {
         throw new Error('No audience segment is available. Create contacts and an audience segment before launching.');
       }
 
+      const isScheduled = formData.launchMode === 'SCHEDULED';
+      if (isScheduled && !formData.scheduledAt) {
+        throw new Error('Please select a scheduled launch date & time.');
+      }
+
+      const effectiveSubject = (selectedTemplate?.subject || formData.name).trim();
+
       const payload = {
         name: formData.name.trim(),
-        subject: formData.subject.trim(),
+        subject: effectiveSubject,
         senderName: formData.senderName.trim(),
         senderEmail: formData.senderEmail.trim(),
         replyTo: formData.replyTo?.trim() || formData.senderEmail.trim(),
         templateId: Number(formData.templateId),
         segmentId: Number(segmentId),
-        batchSize: Number(formData.batchSize) || 500
+        batchSize: Number(formData.batchSize) || 500,
+        executionType: formData.launchMode,
+        scheduledAt: isScheduled ? formData.scheduledAt : null
       };
 
       const createResponse = await campaignApi.createCampaign(payload);
       const createdCampaign = unwrapData(createResponse);
-      await campaignApi.launchCampaign(createdCampaign.id, payload.batchSize);
-      setAlertConfig({
-        isOpen: true,
-        type: 'success',
-        title: 'Campaign Launched',
-        message: 'Campaign launched successfully! Redirecting to dashboard...'
-      });
+      const campId = createdCampaign.id || createdCampaign.data?.id;
+      setLaunchedCampaignId(campId);
+
+      if (isScheduled) {
+        setAlertConfig({
+          isOpen: true,
+          type: 'success',
+          title: 'Campaign Scheduled!',
+          message: `Campaign has been scheduled for automated dispatch at ${new Date(formData.scheduledAt).toLocaleString()}.`
+        });
+      } else {
+        await campaignApi.launchCampaign(campId, payload.batchSize);
+        // Immediately navigate to dedicated progress telemetry page
+        navigate(`/campaigns/${campId}/analytics`);
+      }
     } catch (err) {
-      setError('Failed to launch campaign: ' + (err.response?.data?.message || err.message));
+      setError('Failed to process campaign: ' + (err.response?.data?.message || err.message));
     } finally {
       setSubmitting(false);
     }
@@ -220,17 +241,6 @@ export const CampaignWizardPage = () => {
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="e.g. Q4 Black Friday Promo"
-                className="ma-input"
-              />
-            </div>
-            <div>
-              <label className="ma-label">Subject Line *</label>
-              <input
-                type="text"
-                required
-                value={formData.subject}
-                onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                placeholder="e.g. Your weekly MailAlly update"
                 className="ma-input"
               />
             </div>
@@ -338,14 +348,75 @@ export const CampaignWizardPage = () => {
 
         {step === 4 && (
           <div className="space-y-4">
-            <h3 className="font-bold text-[15px] text-[#0A0A0B]">Step 4: Review & Dispatch</h3>
+            <h3 className="font-bold text-[15px] text-[#0A0A0B]">Step 4: Review & Dispatch Mode</h3>
+            
+            {/* Launch Mode Selection */}
+            <div>
+              <label className="ma-label mb-1.5 block">Dispatch Mode</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, launchMode: 'INSTANT' })}
+                  className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    formData.launchMode === 'INSTANT'
+                      ? 'border-blue-600 bg-blue-50/50 ring-1 ring-blue-600'
+                      : 'border-[#E5E5E7] bg-[#FAFAFB] hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 font-bold text-[13px] text-[#0A0A0B]">
+                    <Zap className="w-4 h-4 text-blue-600" />
+                    Launch Immediately
+                  </div>
+                  <p className="text-[11px] text-[#71717A] mt-1">
+                    Start live dispatch engine as soon as you confirm.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, launchMode: 'SCHEDULED' })}
+                  className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    formData.launchMode === 'SCHEDULED'
+                      ? 'border-purple-600 bg-purple-50/50 ring-1 ring-purple-600'
+                      : 'border-[#E5E5E7] bg-[#FAFAFB] hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 font-bold text-[13px] text-[#0A0A0B]">
+                    <Clock className="w-4 h-4 text-purple-600" />
+                    Automated Schedule
+                  </div>
+                  <p className="text-[11px] text-[#71717A] mt-1">
+                    Schedule background runner for a future date & time.
+                  </p>
+                </button>
+              </div>
+            </div>
+
+            {formData.launchMode === 'SCHEDULED' && (
+              <div className="p-3 bg-purple-50/40 rounded-xl border border-purple-200 space-y-1.5 animate-fadeIn">
+                <label className="ma-label flex items-center gap-1.5 text-purple-900 font-bold text-[12px]">
+                  <Calendar className="w-3.5 h-3.5 text-purple-600" />
+                  Select Launch Date & Time *
+                </label>
+                <input
+                  type="datetime-local"
+                  required
+                  value={formData.scheduledAt}
+                  onChange={(e) => setFormData({ ...formData, scheduledAt: e.target.value })}
+                  min={new Date().toISOString().slice(0, 16)}
+                  className="ma-input bg-white border-purple-300 focus:border-purple-600"
+                />
+              </div>
+            )}
+
             <div className="p-4 rounded-xl bg-[#FAFAFB] border border-[#E5E5E7] space-y-2 text-[13px]">
               <p><strong>Name:</strong> {formData.name}</p>
-              <p><strong>Subject:</strong> {formData.subject}</p>
+              <p><strong>Subject:</strong> {selectedTemplate?.subject || 'Inherited from chosen template'}</p>
               <p><strong>Sender:</strong> {formData.senderName} ({formData.senderEmail})</p>
               <p><strong>Segment:</strong> {selectedSegment?.name || 'All Active Subscribers'}</p>
               <p><strong>Template:</strong> {selectedTemplate?.name || 'Attached'}</p>
               <p><strong>Batch Size:</strong> {formData.batchSize}</p>
+              <p><strong>Dispatch Mode:</strong> {formData.launchMode === 'SCHEDULED' ? `Scheduled (${formData.scheduledAt || 'Not specified'})` : 'Immediate Execution'}</p>
             </div>
           </div>
         )}
@@ -365,8 +436,18 @@ export const CampaignWizardPage = () => {
               Next Step <ArrowRight className="w-3.5 h-3.5" />
             </button>
           ) : (
-            <button onClick={handleSubmit} disabled={submitting} className="ma-btn ma-btn-primary">
-              {submitting ? 'Launching...' : 'Launch Campaign'}
+            <button onClick={handleSubmit} disabled={submitting} className="ma-btn ma-btn-primary gap-1.5">
+              {submitting ? (
+                'Processing...'
+              ) : formData.launchMode === 'SCHEDULED' ? (
+                <>
+                  <Clock className="w-4 h-4" /> Confirm & Schedule
+                </>
+              ) : (
+                <>
+                  <Rocket className="w-4 h-4" /> Launch Campaign
+                </>
+              )}
             </button>
           )}
         </div>

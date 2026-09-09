@@ -42,6 +42,8 @@ public class UpdateCampaignRequestDto {
         this.status = status;
     }
 
+    private java.util.List<Long> contactIds;
+
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     public String getSubject() { return subject; }
@@ -54,4 +56,6 @@ public class UpdateCampaignRequestDto {
     public void setReplyTo(String replyTo) { this.replyTo = replyTo; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public java.util.List<Long> getContactIds() { return contactIds; }
+    public void setContactIds(java.util.List<Long> contactIds) { this.contactIds = contactIds; }
 }

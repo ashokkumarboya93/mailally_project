@@ -13,8 +13,9 @@ Write-Host "=============================================" -ForegroundColor Cyan
 # ----------------------------------------
 Write-Host "`n[STEP 1] Sending test email via Brevo API directly..." -ForegroundColor Yellow
 
+$apiKey = if ($env:BREVO_API_KEY) { $env:BREVO_API_KEY } else { "YOUR_BREVO_API_KEY" }
 $headers = @{
-    "api-key"      = "YOUR_BREVO_API_KEY"
+    "api-key"      = $apiKey
     "accept"       = "application/json"
     "content-type" = "application/json"
 }

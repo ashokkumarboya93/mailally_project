@@ -31,6 +31,11 @@ public class CreateCampaignRequestDto {
 
     private Long templateId;
     private Long segmentId;
+    private java.time.LocalDateTime scheduledAt;
+    private String executionType; // IMMEDIATE or SCHEDULED
+    private Integer batchSize;
+    private Integer retryCount;
+    private java.util.List<Long> contactIds;
 
     public CreateCampaignRequestDto() {}
 
@@ -59,4 +64,14 @@ public class CreateCampaignRequestDto {
     public void setTemplateId(Long templateId) { this.templateId = templateId; }
     public Long getSegmentId() { return segmentId; }
     public void setSegmentId(Long segmentId) { this.segmentId = segmentId; }
+    public java.time.LocalDateTime getScheduledAt() { return scheduledAt; }
+    public void setScheduledAt(java.time.LocalDateTime scheduledAt) { this.scheduledAt = scheduledAt; }
+    public String getExecutionType() { return executionType; }
+    public void setExecutionType(String executionType) { this.executionType = executionType; }
+    public Integer getBatchSize() { return batchSize; }
+    public void setBatchSize(Integer batchSize) { this.batchSize = batchSize; }
+    public Integer getRetryCount() { return retryCount; }
+    public void setRetryCount(Integer retryCount) { this.retryCount = retryCount; }
+    public java.util.List<Long> getContactIds() { return contactIds; }
+    public void setContactIds(java.util.List<Long> contactIds) { this.contactIds = contactIds; }
 }

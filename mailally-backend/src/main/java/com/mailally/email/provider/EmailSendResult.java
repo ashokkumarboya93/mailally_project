@@ -27,6 +27,7 @@ public class EmailSendResult {
 
     public boolean isSuccess() { return success; }
     public String getResponseId() { return responseId; }
+    public String getMessageId() { return responseId; }
     public String getErrorMessage() { return errorMessage; }
     public String getProviderName() { return providerName; }
     public String getFailureCategory() { return failureCategory; }

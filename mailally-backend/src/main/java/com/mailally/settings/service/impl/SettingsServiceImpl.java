@@ -246,7 +246,7 @@ public class SettingsServiceImpl implements SettingsService {
                 seedList.add(createSetting(org, "CAMPAIGN", "mailally.campaign.default_sender_email", "info@marcamor.com", "STRING", "Default sender email"));
                 break;
             case "EMAIL_ENGINE":
-                seedList.add(createSetting(org, "EMAIL_ENGINE", "mailally.email.default_provider", "SMTP", "STRING", "Active email provider"));
+                seedList.add(createSetting(org, "EMAIL_ENGINE", "mailally.email.default_provider", "BREVO", "STRING", "Active email provider (BREVO / SES)"));
                 seedList.add(createSetting(org, "EMAIL_ENGINE", "mailally.email.max_retries", "3", "INTEGER", "Maximum retry attempts"));
                 seedList.add(createSetting(org, "EMAIL_ENGINE", "mailally.email.batch_size", "500", "INTEGER", "Email dispatch batch size"));
                 break;

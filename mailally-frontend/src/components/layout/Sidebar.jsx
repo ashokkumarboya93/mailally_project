@@ -1,5 +1,5 @@
-import React from 'react';
-import { NavLink } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Clock, BarChart3, Bell,
   Settings, CreditCard, Shield, Sparkles, FileText, Send,
@@ -7,10 +7,32 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { CometLogo } from '../common/CometLogo';
+import { notificationApi } from '../../api/extraApis';
 
 export const Sidebar = ({ isCollapsed, toggleSidebar, isMobileOpen, closeMobile }) => {
   const { currentUser } = useAuth();
+  const location = useLocation();
   const role = currentUser?.role || 'ADMIN';
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const res = await notificationApi.getUnreadCount();
+      if (res && typeof res.data === 'number') {
+        setUnreadCount(res.data);
+      } else if (typeof res === 'number') {
+        setUnreadCount(res);
+      }
+    } catch {
+      // safe fallback
+    }
+  };
+
+  useEffect(() => {
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 15000);
+    return () => clearInterval(interval);
+  }, [location.pathname]);
 
   const sections = [
     {
@@ -124,7 +146,12 @@ export const Sidebar = ({ isCollapsed, toggleSidebar, isMobileOpen, closeMobile 
                             }`}
                             strokeWidth={isActive ? 2 : 1.5}
                           />
-                          {!isCollapsed && <span className="truncate">{item.name}</span>}
+                          {!isCollapsed && <span className="truncate flex-1">{item.name}</span>}
+                          {!isCollapsed && item.path === '/notifications' && unreadCount > 0 && (
+                            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-[#EC4899] text-white">
+                              {unreadCount > 99 ? '99+' : unreadCount}
+                            </span>
+                          )}
                         </>
                       )}
                     </NavLink>

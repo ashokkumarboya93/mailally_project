@@ -203,6 +203,16 @@ public class CampaignController {
                 .success(true).message("Collection added to campaign successfully").data(added).timestamp(LocalDateTime.now()).build());
     }
 
+    @PostMapping("/{id}/recipients/add")
+    public ResponseEntity<ApiResponse<CampaignResponseDto>> addContactsToCampaign(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long id,
+            @RequestBody List<Long> contactIds) {
+        CampaignResponseDto updated = campaignService.addContactsToCampaign(userDetails, id, contactIds);
+        return ResponseEntity.ok(ApiResponse.<CampaignResponseDto>builder()
+                .success(true).message("Contacts added to campaign successfully").data(updated).timestamp(LocalDateTime.now()).build());
+    }
+
     @GetMapping("/{id}/diagnostics")
     public ResponseEntity<ApiResponse<com.mailally.campaign.dto.CampaignDiagnosticsDto>> getDiagnostics(
             @AuthenticationPrincipal CustomUserDetails userDetails,

@@ -22,7 +22,7 @@ export const LiveSendingDashboard = ({ campaignId, onClose, onFinished }) => {
     retryCount: 0,
     emailsPerMinute: 0,
     remainingSeconds: 0,
-    activeProvider: 'SMTP (Gmail Enterprise)',
+    activeProvider: 'BREVO / Amazon SES',
     workers: [
       { workerId: 'Worker-1', status: 'Initializing', processedCount: 0 },
       { workerId: 'Worker-2', status: 'Initializing', processedCount: 0 }
@@ -147,6 +147,16 @@ export const LiveSendingDashboard = ({ campaignId, onClose, onFinished }) => {
     }
   };
 
+  const getProgressBarGradient = (status) => {
+    const st = (status || 'RUNNING').toUpperCase();
+    if (st === 'RUNNING') return 'bg-gradient-to-r from-blue-600 via-indigo-500 via-purple-500 to-emerald-400 animate-pulse';
+    if (st === 'COMPLETED') return 'bg-gradient-to-r from-emerald-500 to-teal-400';
+    if (st === 'FAILED') return 'bg-gradient-to-r from-rose-600 to-pink-500';
+    if (st === 'PAUSED') return 'bg-gradient-to-r from-amber-500 to-orange-400';
+    if (st === 'CANCELLED') return 'bg-gradient-to-r from-slate-600 to-slate-400';
+    return 'bg-gradient-to-r from-blue-500 to-sky-400';
+  };
+
   return (
     <div className="bg-white border-2 border-blue-200 rounded-3xl p-6 space-y-6 shadow-xl animate-fadeIn relative">
       
@@ -218,7 +228,7 @@ export const LiveSendingDashboard = ({ campaignId, onClose, onFinished }) => {
         </div>
         <div className="w-full bg-slate-100 rounded-full h-4 p-0.5 border border-slate-200 overflow-hidden">
           <div
-            className="bg-gradient-to-r from-blue-600 via-sky-500 to-emerald-400 h-full rounded-full transition-all duration-500 shadow-xs"
+            className={`h-full rounded-full transition-all duration-500 shadow-xs ${getProgressBarGradient(progress.status)}`}
             style={{ width: `${progress.progressPercentage}%` }}
           />
         </div>

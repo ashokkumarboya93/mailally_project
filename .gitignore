@@ -23,6 +23,9 @@ Thumbs.db
 # Environment variables & secrets
 .env
 .env.local
+application.properties.local
+application*.local*
+*.local.properties
 *.backup
 *.recovery-backup
 

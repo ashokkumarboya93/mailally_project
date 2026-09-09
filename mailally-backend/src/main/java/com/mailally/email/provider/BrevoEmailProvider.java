@@ -82,10 +82,13 @@ public class BrevoEmailProvider implements EmailProvider {
 
             String jsonPayload = objectMapper.writeValueAsString(rootNode);
 
+            String apiKey = (config.getBrevo() != null && config.getBrevo().getApiKey() != null)
+                    ? config.getBrevo().getApiKey().trim() : "";
+
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(apiUrl))
                     .header("accept", "application/json")
-                    .header("api-key", config.getBrevo().getApiKey())
+                    .header("api-key", apiKey)
                     .header("content-type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
                     .build();
@@ -176,12 +179,15 @@ public class BrevoEmailProvider implements EmailProvider {
                 }
             }
 
+            String apiKey = (config.getBrevo() != null && config.getBrevo().getApiKey() != null)
+                    ? config.getBrevo().getApiKey().trim() : "";
+
             String jsonPayload = objectMapper.writeValueAsString(rootNode);
 
             HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
                     .uri(URI.create(apiUrl))
                     .header("accept", "application/json")
-                    .header("api-key", config.getBrevo().getApiKey())
+                    .header("api-key", apiKey)
                     .header("content-type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
                     .timeout(Duration.ofSeconds(60));

@@ -9,7 +9,11 @@ import java.time.LocalDateTime;
  * Entity representing recipient delivery details and performance diagnostics for V2.
  */
 @Entity
-@Table(name = "campaign_recipient_logs")
+@Table(name = "campaign_recipient_logs", indexes = {
+    @Index(name = "idx_crl_campaign_status", columnList = "campaign_id, status"),
+    @Index(name = "idx_crl_campaign_contact", columnList = "campaign_id, contact_id"),
+    @Index(name = "idx_crl_email", columnList = "email")
+})
 public class CampaignRecipientLog {
 
     @Id

@@ -61,6 +61,7 @@ public class ContactServiceImpl implements ContactService {
     private final ContactAuditHistoryRepository auditHistoryRepository;
     private final com.mailally.campaign.repository.CampaignRecipientRepository campaignRecipientRepository;
     private final com.mailally.campaign.repository.CampaignRepository campaignRepository;
+    private final com.mailally.notification.service.NotificationService notificationService;
 
     public ContactServiceImpl(ContactRepository contactRepository,
                               OrganizationRepository organizationRepository,
@@ -78,7 +79,8 @@ public class ContactServiceImpl implements ContactService {
                               DynamicFieldRegistryRepository fieldRegistryRepository,
                               ContactAuditHistoryRepository auditHistoryRepository,
                               com.mailally.campaign.repository.CampaignRecipientRepository campaignRecipientRepository,
-                              com.mailally.campaign.repository.CampaignRepository campaignRepository) {
+                              com.mailally.campaign.repository.CampaignRepository campaignRepository,
+                              com.mailally.notification.service.NotificationService notificationService) {
         this.contactRepository = contactRepository;
         this.organizationRepository = organizationRepository;
         this.importBatchRepository = importBatchRepository;
@@ -96,6 +98,7 @@ public class ContactServiceImpl implements ContactService {
         this.auditHistoryRepository = auditHistoryRepository;
         this.campaignRecipientRepository = campaignRecipientRepository;
         this.campaignRepository = campaignRepository;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -110,6 +113,21 @@ public class ContactServiceImpl implements ContactService {
         Contact savedContact = contactRepository.save(contact);
 
         logTimeline(savedContact.getId(), currentUser.getOrganizationId(), "CONTACT_CREATED", "Contact created manually", currentUser.getUserId());
+
+        try {
+            notificationService.sendNotification(
+                    currentUser.getOrganizationId(),
+                    currentUser.getUserId(),
+                    "CONTACTS",
+                    "Contact Added: " + savedContact.getEmail(),
+                    "New contact " + (savedContact.getFirstName() != null ? savedContact.getFirstName() + " " : "") + "(" + savedContact.getEmail() + ") was added.",
+                    "NORMAL",
+                    "CONTACTS",
+                    savedContact.getId(),
+                    "/contacts"
+            );
+        } catch (Exception ignored) {}
+
         return contactMapper.toContactResponseDto(savedContact);
     }
 
@@ -156,6 +174,20 @@ public class ContactServiceImpl implements ContactService {
         contactRepository.save(contact);
 
         logTimeline(contact.getId(), currentUser.getOrganizationId(), "CONTACT_DELETED", "Contact soft deleted", currentUser.getUserId());
+
+        try {
+            notificationService.sendNotification(
+                    currentUser.getOrganizationId(),
+                    currentUser.getUserId(),
+                    "CONTACTS",
+                    "Contact Deleted: " + contact.getEmail(),
+                    "Contact " + (contact.getFirstName() != null ? contact.getFirstName() + " " : "") + "(" + contact.getEmail() + ") was deleted.",
+                    "NORMAL",
+                    "CONTACTS",
+                    contact.getId(),
+                    "/contacts"
+            );
+        } catch (Exception ignored) {}
     }
 
     @Override
@@ -171,6 +203,21 @@ public class ContactServiceImpl implements ContactService {
         Contact saved = contactRepository.save(contact);
 
         logTimeline(saved.getId(), currentUser.getOrganizationId(), "CONTACT_RESTORED", "Contact restored from trash", currentUser.getUserId());
+
+        try {
+            notificationService.sendNotification(
+                    currentUser.getOrganizationId(),
+                    currentUser.getUserId(),
+                    "CONTACTS",
+                    "Contact Restored: " + saved.getEmail(),
+                    "Contact " + (saved.getFirstName() != null ? saved.getFirstName() + " " : "") + "(" + saved.getEmail() + ") was restored.",
+                    "NORMAL",
+                    "CONTACTS",
+                    saved.getId(),
+                    "/contacts"
+            );
+        } catch (Exception ignored) {}
+
         return contactMapper.toContactResponseDto(saved);
     }
 
@@ -941,8 +988,24 @@ public class ContactServiceImpl implements ContactService {
         if ("DELETE".equalsIgnoreCase(dto.getOperation())) {
             for (Contact c : contacts) {
                 c.setIsDeleted(true);
+                c.setDeletedBy(currentUser.getUserId());
+                c.setDeletedAt(LocalDateTime.now());
             }
             contactRepository.saveAll(contacts);
+
+            try {
+                notificationService.sendNotification(
+                        currentUser.getOrganizationId(),
+                        currentUser.getUserId(),
+                        "CONTACTS",
+                        "Bulk Contacts Deleted",
+                        contacts.size() + " contact records were moved to trash.",
+                        "NORMAL",
+                        "CONTACTS",
+                        null,
+                        "/contacts"
+                );
+            } catch (Exception ignored) {}
         } else if ("ADD_TAG".equalsIgnoreCase(dto.getOperation()) && dto.getTag() != null) {
             for (Contact c : contacts) {
                 String existing = c.getTags() != null ? c.getTags() : "";
@@ -981,6 +1044,20 @@ public class ContactServiceImpl implements ContactService {
                 long count = campaignRecipientRepository.countByCampaignId(campaign.getId());
                 campaign.setTotalRecipients((int) count);
                 campaignRepository.save(campaign);
+
+                try {
+                    notificationService.sendNotification(
+                            currentUser.getOrganizationId(),
+                            currentUser.getUserId(),
+                            "CAMPAIGNS",
+                            "Contacts Added: " + campaign.getName(),
+                            "Added contacts from collection to campaign '" + campaign.getName() + "' (Total recipients: " + count + ").",
+                            "NORMAL",
+                            "CAMPAIGNS",
+                            campaign.getId(),
+                            "/campaigns"
+                    );
+                } catch (Exception ignored) {}
             }
         }
     }
@@ -1013,6 +1090,20 @@ public class ContactServiceImpl implements ContactService {
         if (collection != null) {
             collection.setIsDeleted(true);
             collectionRepository.save(collection);
+
+            try {
+                notificationService.sendNotification(
+                        currentUser.getOrganizationId(),
+                        currentUser.getUserId(),
+                        "CONTACTS",
+                        "Collection Deleted: " + collection.getName(),
+                        "Collection '" + collection.getName() + "' and its " + collectionContacts.size() + " contacts were deleted.",
+                        "NORMAL",
+                        "CONTACTS",
+                        collection.getId(),
+                        "/contacts"
+                );
+            } catch (Exception ignored) {}
         }
     }
 }

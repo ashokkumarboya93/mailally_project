@@ -40,19 +40,31 @@ public class CampaignServiceImpl implements CampaignService {
     private final SegmentRepository segmentRepository;
     private final CampaignValidator campaignValidator;
     private final CampaignMapper campaignMapper;
+    private final com.mailally.scheduler.repository.SchedulerRepository schedulerRepository;
+    private final com.mailally.notification.service.NotificationService notificationService;
+    private final com.mailally.campaign.repository.CampaignRecipientRepository recipientRepository;
+    private final com.mailally.contact.repository.ContactRepository contactRepository;
 
     public CampaignServiceImpl(CampaignRepository campaignRepository,
                                OrganizationRepository organizationRepository,
                                TemplateRepository templateRepository,
                                SegmentRepository segmentRepository,
                                CampaignValidator campaignValidator,
-                               CampaignMapper campaignMapper) {
+                               CampaignMapper campaignMapper,
+                               com.mailally.scheduler.repository.SchedulerRepository schedulerRepository,
+                               com.mailally.notification.service.NotificationService notificationService,
+                               com.mailally.campaign.repository.CampaignRecipientRepository recipientRepository,
+                               com.mailally.contact.repository.ContactRepository contactRepository) {
         this.campaignRepository = campaignRepository;
         this.organizationRepository = organizationRepository;
         this.templateRepository = templateRepository;
         this.segmentRepository = segmentRepository;
         this.campaignValidator = campaignValidator;
         this.campaignMapper = campaignMapper;
+        this.schedulerRepository = schedulerRepository;
+        this.notificationService = notificationService;
+        this.recipientRepository = recipientRepository;
+        this.contactRepository = contactRepository;
     }
 
     @Override
@@ -75,8 +87,118 @@ public class CampaignServiceImpl implements CampaignService {
         }
 
         Campaign campaign = campaignMapper.toCampaignEntity(dto, org, template, segment, currentUser.getUserId());
+        
+        boolean isScheduled = dto.getScheduledAt() != null;
+        if (isScheduled) {
+            campaign.setStatus("SCHEDULED");
+            campaign.setScheduledAt(dto.getScheduledAt());
+        } else {
+            campaign.setStatus("DRAFT");
+        }
+
         Campaign saved = campaignRepository.save(campaign);
+
+        if (dto.getContactIds() != null && !dto.getContactIds().isEmpty()) {
+            final Campaign targetCampaign = saved;
+            java.util.List<com.mailally.campaign.entity.CampaignRecipient> recipients = new java.util.ArrayList<>();
+            for (Long cId : dto.getContactIds()) {
+                var opt = contactRepository.findByIdAndOrganizationIdAndIsDeletedFalse(cId, currentUser.getOrganizationId());
+                if (opt.isPresent()) {
+                    com.mailally.campaign.entity.CampaignRecipient r = new com.mailally.campaign.entity.CampaignRecipient();
+                    r.setCampaign(targetCampaign);
+                    r.setContact(opt.get());
+                    r.setOrganization(org);
+                    r.setStatus("QUEUED");
+                    recipients.add(r);
+                }
+            }
+            if (!recipients.isEmpty()) {
+                recipientRepository.saveAll(recipients);
+                saved.setTotalRecipients(recipients.size());
+                saved = campaignRepository.save(saved);
+            }
+        }
+
+        if (isScheduled) {
+            com.mailally.scheduler.entity.Scheduler scheduler = com.mailally.scheduler.entity.Scheduler.builder()
+                    .organization(org)
+                    .campaign(saved)
+                    .executionType("SCHEDULED")
+                    .status("SCHEDULED")
+                    .scheduledTime(dto.getScheduledAt())
+                    .createdBy(currentUser.getUserId())
+                    .updatedBy(currentUser.getUserId())
+                    .build();
+            schedulerRepository.save(scheduler);
+
+            try {
+                notificationService.sendNotification(
+                        currentUser.getOrganizationId(),
+                        currentUser.getUserId(),
+                        "CAMPAIGNS",
+                        "Campaign Scheduled: " + saved.getName(),
+                        "Campaign '" + saved.getName() + "' scheduled to launch automatically at " + dto.getScheduledAt() + ".",
+                        "NORMAL",
+                        "CAMPAIGNS",
+                        saved.getId(),
+                        "/scheduler"
+                );
+            } catch (Exception e) {
+                // Ignore notification failure
+            }
+        } else {
+            try {
+                notificationService.sendNotification(
+                        currentUser.getOrganizationId(),
+                        currentUser.getUserId(),
+                        "CAMPAIGNS",
+                        "Campaign Created: " + saved.getName(),
+                        "New instant/draft campaign '" + saved.getName() + "' created and ready for setup.",
+                        "NORMAL",
+                        "CAMPAIGNS",
+                        saved.getId(),
+                        "/campaigns"
+                );
+            } catch (Exception e) {
+                // Ignore notification failure
+            }
+        }
+
         return campaignMapper.toCampaignResponseDto(saved);
+    }
+
+    @Override
+    public CampaignResponseDto addContactsToCampaign(CustomUserDetails currentUser, Long campaignId, java.util.List<Long> contactIds) {
+        campaignValidator.validateAdminOrManager(currentUser);
+
+        Campaign campaign = campaignRepository.findByIdAndOrganizationIdAndIsDeletedFalse(campaignId, currentUser.getOrganizationId())
+                .orElseThrow(() -> new CustomException("Campaign not found with ID: " + campaignId));
+
+        if (contactIds != null && !contactIds.isEmpty()) {
+            final Campaign targetCampaign = campaign;
+            java.util.List<com.mailally.campaign.entity.CampaignRecipient> newRecipients = new java.util.ArrayList<>();
+            for (Long cId : contactIds) {
+                if (!recipientRepository.existsByCampaignIdAndContactId(campaignId, cId)) {
+                    var opt = contactRepository.findByIdAndOrganizationIdAndIsDeletedFalse(cId, currentUser.getOrganizationId());
+                    if (opt.isPresent()) {
+                        com.mailally.campaign.entity.CampaignRecipient r = new com.mailally.campaign.entity.CampaignRecipient();
+                        r.setCampaign(targetCampaign);
+                        r.setContact(opt.get());
+                        r.setOrganization(targetCampaign.getOrganization());
+                        r.setStatus("QUEUED");
+                        newRecipients.add(r);
+                    }
+                }
+            }
+            if (!newRecipients.isEmpty()) {
+                recipientRepository.saveAll(newRecipients);
+                long totalCount = recipientRepository.countByCampaignId(campaignId);
+                campaign.setTotalRecipients((int) totalCount);
+                campaign = campaignRepository.save(campaign);
+            }
+        }
+
+        return campaignMapper.toCampaignResponseDto(campaign);
     }
 
     @Override
@@ -196,10 +318,13 @@ public class CampaignServiceImpl implements CampaignService {
         Campaign campaign = campaignRepository.findByIdAndOrganizationIdAndIsDeletedFalse(id, currentUser.getOrganizationId())
                 .orElseThrow(() -> new CustomException("Campaign not found with ID: " + id));
 
-        campaign.setIsDeleted(true);
-        campaign.setDeletedBy(currentUser.getUserId());
-        campaign.setDeletedAt(LocalDateTime.now());
-        campaignRepository.save(campaign);
+        int rows = campaignRepository.softDeleteCampaignById(id, currentUser.getOrganizationId(), currentUser.getUserId(), LocalDateTime.now());
+        if (rows == 0) {
+            campaign.setIsDeleted(true);
+            campaign.setDeletedBy(currentUser.getUserId());
+            campaign.setDeletedAt(LocalDateTime.now());
+            campaignRepository.save(campaign);
+        }
     }
 
     @Override

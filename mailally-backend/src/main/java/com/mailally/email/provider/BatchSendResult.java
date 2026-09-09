@@ -31,11 +31,14 @@ public class BatchSendResult {
 
     public boolean isSuccess() { return success; }
     public String getProviderBatchId() { return providerBatchId; }
+    public String getBatchMessageId() { return providerBatchId; }
     public Map<Long, String> getRecipientMessageIds() { return recipientMessageIds; }
+    public Map<Long, String> getRecipientMsgIdMap() { return recipientMessageIds; }
     public Map<Long, String> getRecipientFailures() { return recipientFailures; }
     public String getErrorMessage() { return errorMessage; }
     public String getProviderName() { return providerName; }
     public String getSmtpResponseCode() { return smtpResponseCode; }
+    public String getErrorCode() { return smtpResponseCode; }
     public int getRetryAfterSeconds() { return retryAfterSeconds; }
     public void setRetryAfterSeconds(int retryAfterSeconds) { this.retryAfterSeconds = retryAfterSeconds; }
 

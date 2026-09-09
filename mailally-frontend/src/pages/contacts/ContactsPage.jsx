@@ -358,6 +358,27 @@ export const ContactsPage = () => {
     else setSelectedIds([...selectedIds, id]);
   };
 
+  const handleAddContactsToCampaignModal = async () => {
+    if (!selectedCampaignId) return;
+    try {
+      if (Array.isArray(isAddToCampaignOpen)) {
+        await campaignApi.addContactsToCampaign(selectedCampaignId, isAddToCampaignOpen);
+        showAlert('success', `Added ${isAddToCampaignOpen.length} contact(s) to campaign!`);
+      } else if (isAddToCampaignOpen === 'SELECTED') {
+        await campaignApi.addContactsToCampaign(selectedCampaignId, selectedIds);
+        showAlert('success', `Added ${selectedIds.length} selected contact(s) to campaign!`);
+      } else {
+        await campaignApi.addCollectionToCampaign(selectedCampaignId, isAddToCampaignOpen);
+        showAlert('success', 'Collection attached to campaign!');
+      }
+      setIsAddToCampaignOpen(false);
+      setSelectedCampaignId('');
+      setSelectedIds([]);
+    } catch (e) {
+      showAlert('error', 'Failed to add to campaign: ' + (e.response?.data?.message || e.message));
+    }
+  };
+
   if (loading) {
     return <PageSkeletonLoader type="table" />;
   }
@@ -667,6 +688,13 @@ export const ContactsPage = () => {
                     <td className="py-3 px-3 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button
+                          onClick={() => { setSelectedCampaignId(''); setIsAddToCampaignOpen([c.id]); }}
+                          className="p-1 text-[#9CA3AF] hover:text-[#2563EB] cursor-pointer"
+                          title="Add to Campaign"
+                        >
+                          <Megaphone className="w-3.5 h-3.5" />
+                        </button>
+                        <button
                           onClick={() => handleOpenEditModal(c)}
                           className="p-1 text-[#9CA3AF] hover:text-[#0A0A0B] cursor-pointer"
                           title="Edit"
@@ -850,7 +878,7 @@ export const ContactsPage = () => {
           </select>
 
           <button
-            onClick={() => handleAddCollectionToCampaign(isAddToCampaignOpen)}
+            onClick={handleAddContactsToCampaignModal}
             disabled={!selectedCampaignId}
             className="ma-btn ma-btn-primary w-full"
           >

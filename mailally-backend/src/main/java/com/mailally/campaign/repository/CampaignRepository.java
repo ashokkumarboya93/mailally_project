@@ -28,6 +28,11 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
 
     Page<Campaign> findByOrganizationIdAndIsDeletedFalse(Long organizationId, Pageable pageable);
 
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    @Query("UPDATE Campaign c SET c.isDeleted = true, c.deletedBy = :deletedBy, c.deletedAt = :deletedAt WHERE c.id = :id AND c.organization.id = :organizationId")
+    int softDeleteCampaignById(@Param("id") Long id, @Param("organizationId") Long organizationId, @Param("deletedBy") Long deletedBy, @Param("deletedAt") java.time.LocalDateTime deletedAt);
+
     @Query("SELECT c FROM Campaign c WHERE c.organization.id = :organizationId " +
            "AND c.isDeleted = false " +
            "AND (:name IS NULL OR LOWER(c.name) LIKE LOWER(CONCAT('%', :name, '%'))) " +

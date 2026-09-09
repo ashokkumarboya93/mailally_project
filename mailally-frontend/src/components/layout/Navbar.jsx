@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Search, Bell, LogOut, User, Plus, Command, ChevronDown, Menu } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { notificationApi } from '../../api/extraApis';
 
 export const Navbar = ({ onMenuClick }) => {
   const { currentUser, logout } = useAuth();
@@ -10,13 +11,27 @@ export const Navbar = ({ onMenuClick }) => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const profileRef = useRef(null);
 
-  const currentPath = location.pathname.substring(1) || 'Dashboard';
-  const pageTitle = currentPath.split('/')[0];
-  const formattedTitle = pageTitle.charAt(0).toUpperCase() + pageTitle.slice(1);
-  const userName = currentUser?.email ? currentUser.email.split('@')[0] : 'Akash';
-  const initials = userName.substring(0, 2).toUpperCase();
+  const fetchUnreadCount = async () => {
+    try {
+      const res = await notificationApi.getUnreadCount();
+      if (res && typeof res.data === 'number') {
+        setUnreadCount(res.data);
+      } else if (typeof res === 'number') {
+        setUnreadCount(res);
+      }
+    } catch {
+      // safe fallback
+    }
+  };
+
+  useEffect(() => {
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 15000);
+    return () => clearInterval(interval);
+  }, [location.pathname]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -34,6 +49,12 @@ export const Navbar = ({ onMenuClick }) => {
       navigate(`/dashboard?search=${encodeURIComponent(searchQuery)}`);
     }
   };
+
+  const currentPath = location.pathname.substring(1) || 'Dashboard';
+  const pageTitle = currentPath.split('/')[0];
+  const formattedTitle = pageTitle.charAt(0).toUpperCase() + pageTitle.slice(1);
+  const userName = currentUser?.email ? currentUser.email.split('@')[0] : 'Akash';
+  const initials = userName.substring(0, 2).toUpperCase();
 
   return (
     <header className="h-[56px] px-5 lg:px-8 flex items-center justify-between z-20 bg-white border-b border-[#E5E5E7]">
@@ -94,10 +115,17 @@ export const Navbar = ({ onMenuClick }) => {
         {/* Notification Bell */}
         <button
           onClick={() => navigate('/notifications')}
-          className="relative p-2 rounded-lg text-[#9CA3AF] hover:text-[#0A0A0B] hover:bg-[#F3F4F6] transition-all cursor-pointer"
+          className="relative p-2 rounded-lg text-[#5F6368] hover:text-[#0A0A0B] hover:bg-[#F3F4F6] transition-all cursor-pointer"
+          title={unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}` : 'Notifications'}
         >
-          <Bell className="w-[18px] h-[18px]" strokeWidth={1.5} />
-          <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#EC4899]" />
+          <Bell className="w-[19px] h-[19px]" strokeWidth={1.7} />
+          {unreadCount > 0 ? (
+            <span className="absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] px-1 rounded-full bg-[#EC4899] text-white text-[10px] font-black flex items-center justify-center ring-2 ring-white animate-pulse">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          ) : (
+            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#EC4899] opacity-60" />
+          )}
         </button>
 
         {/* Profile */}

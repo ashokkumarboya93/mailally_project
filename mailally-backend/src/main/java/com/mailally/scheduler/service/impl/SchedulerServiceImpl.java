@@ -48,19 +48,22 @@ public class SchedulerServiceImpl implements SchedulerService {
     private final EmailService emailService;
     private final SchedulerValidator schedulerValidator;
     private final SchedulerMapper schedulerMapper;
+    private final com.mailally.notification.service.NotificationService notificationService;
 
     public SchedulerServiceImpl(SchedulerRepository schedulerRepository,
                                 CampaignRepository campaignRepository,
                                 OrganizationRepository organizationRepository,
                                 EmailService emailService,
                                 SchedulerValidator schedulerValidator,
-                                SchedulerMapper schedulerMapper) {
+                                SchedulerMapper schedulerMapper,
+                                com.mailally.notification.service.NotificationService notificationService) {
         this.schedulerRepository = schedulerRepository;
         this.campaignRepository = campaignRepository;
         this.organizationRepository = organizationRepository;
         this.emailService = emailService;
         this.schedulerValidator = schedulerValidator;
         this.schedulerMapper = schedulerMapper;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -313,20 +316,57 @@ public class SchedulerServiceImpl implements SchedulerService {
         log.info("Scheduler runner found {} due campaign tasks for dispatch", dueSchedules.size());
         for (Scheduler scheduler : dueSchedules) {
             try {
+                Campaign campaign = scheduler.getCampaign();
+                if (campaign == null) {
+                    scheduler.setStatus("FAILED");
+                    scheduler.setErrorMessage("Associated campaign not found");
+                    schedulerRepository.save(scheduler);
+                    continue;
+                }
+
                 scheduler.setStatus("RUNNING");
                 scheduler.setExecutedTime(LocalDateTime.now());
                 schedulerRepository.save(scheduler);
 
-                Campaign campaign = scheduler.getCampaign();
-                if (campaign != null) {
-                    CustomUserDetails systemPrincipal = createSystemUserDetails(scheduler);
-                    emailService.launchCampaign(systemPrincipal, new LaunchCampaignRequestDto(campaign.getId()));
-                    scheduler.setStatus("COMPLETED");
+                CustomUserDetails systemPrincipal = createSystemUserDetails(scheduler);
+                emailService.launchCampaign(systemPrincipal, new LaunchCampaignRequestDto(campaign.getId()));
+                scheduler.setStatus("COMPLETED");
+
+                try {
+                    notificationService.sendNotification(
+                            scheduler.getOrganization().getId(),
+                            scheduler.getCreatedBy(),
+                            "CAMPAIGNS",
+                            "Scheduled Campaign Launched: " + campaign.getName(),
+                            "Automated scheduler successfully triggered dispatch for '" + campaign.getName() + "'.",
+                            "SUCCESS",
+                            "SCHEDULER",
+                            campaign.getId(),
+                            "/campaigns/" + campaign.getId() + "/analytics"
+                    );
+                } catch (Exception notifEx) {
+                    // Ignore notification error
                 }
             } catch (Exception ex) {
                 log.error("Scheduler background execution failed for Scheduler ID {}: {}", scheduler.getId(), ex.getMessage(), ex);
                 scheduler.setStatus("FAILED");
                 scheduler.setErrorMessage(ex.getMessage());
+
+                try {
+                    notificationService.sendNotification(
+                            scheduler.getOrganization().getId(),
+                            scheduler.getCreatedBy(),
+                            "CAMPAIGNS",
+                            "Scheduled Dispatch Failed: " + (scheduler.getCampaign() != null ? scheduler.getCampaign().getName() : "ID #" + scheduler.getId()),
+                            "Scheduled trigger failed: " + ex.getMessage(),
+                            "HIGH",
+                            "SCHEDULER",
+                            scheduler.getId(),
+                            "/scheduler"
+                    );
+                } catch (Exception notifEx) {
+                    // Ignore notification error
+                }
             }
             schedulerRepository.save(scheduler);
         }

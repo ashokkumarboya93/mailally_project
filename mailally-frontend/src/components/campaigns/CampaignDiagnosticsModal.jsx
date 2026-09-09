@@ -42,7 +42,7 @@ export const CampaignDiagnosticsModal = ({ isOpen, onClose, diagnostics, templat
           </div>
           <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl">
             <span className="text-xs text-slate-500 font-medium block">Active Provider</span>
-            <span className="text-xs font-bold text-slate-800 mt-1 block">{diagnostics.activeProvider || 'SMTP'}</span>
+            <span className="text-xs font-bold text-slate-800 mt-1 block">{diagnostics.activeProvider || 'BREVO / SES'}</span>
           </div>
         </div>
 

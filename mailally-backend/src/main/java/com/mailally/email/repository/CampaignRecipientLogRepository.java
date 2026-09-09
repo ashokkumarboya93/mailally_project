@@ -18,6 +18,7 @@ import java.util.Optional;
 public interface CampaignRecipientLogRepository extends JpaRepository<CampaignRecipientLog, Long> {
     List<CampaignRecipientLog> findByCampaignId(Long campaignId);
     List<CampaignRecipientLog> findByCampaignIdAndStatus(Long campaignId, String status);
+    boolean existsByCampaignIdAndEmail(Long campaignId, String email);
     long countByCampaignId(Long campaignId);
     long countByCampaignIdAndStatus(Long campaignId, String status);
 

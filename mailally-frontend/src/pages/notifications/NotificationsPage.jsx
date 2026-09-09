@@ -10,25 +10,39 @@ export const NotificationsPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const { addToast } = useToast();
 
+  const formatTimeAgo = (dateStr) => {
+    if (!dateStr) return 'Just now';
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diffMin = Math.floor((now - d) / (1000 * 60));
+    if (diffMin < 1) return 'Just now';
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h ago`;
+    const diffDays = Math.floor(diffHr / 24);
+    return `${diffDays}d ago`;
+  };
+
   const loadNotifications = async () => {
     try {
       const res = await notificationApi.getNotifications();
       if (res?.data?.content && res.data.content.length > 0) {
-        setNotifications(res.data.content);
+        const mapped = res.data.content.map(n => ({
+          id: n.id,
+          title: n.title,
+          message: n.message,
+          category: (n.sourceModule || n.type || 'SYSTEM').toUpperCase(),
+          priority: n.priority || 'NORMAL',
+          isRead: n.status === 'READ',
+          time: formatTimeAgo(n.createdAt),
+          actionUrl: n.actionUrl
+        }));
+        setNotifications(mapped);
       } else {
-        setNotifications([
-          { id: 1, title: 'Campaign Dispatched', message: 'Black Friday 2026 sequence dispatched to 24,890 contacts.', category: 'CAMPAIGNS', priority: 'SUCCESS', isRead: false, time: '10 mins ago' },
-          { id: 2, title: 'Invoice Issued', message: 'Monthly subscription invoice INV-202608-0001 ($63.00) issued.', category: 'BILLING', priority: 'NORMAL', isRead: false, time: '1 hour ago' },
-          { id: 3, title: 'Webhook Endpoint Active', message: 'SendGrid bounce webhook normalized 48 events automatically.', category: 'SYSTEM', priority: 'NORMAL', isRead: true, time: '3 hours ago' },
-          { id: 4, title: 'New Member Joined', message: 'Sarah Connor joined your workspace with Manager privileges.', category: 'USERS', priority: 'NORMAL', isRead: true, time: '5 hours ago' },
-          { id: 5, title: 'High Deliverability Alert', message: 'Domain mailally.com reached 99.4% inboxing rate.', category: 'SYSTEM', priority: 'SUCCESS', isRead: true, time: '1 day ago' }
-        ]);
+        setNotifications([]);
       }
     } catch {
-      setNotifications([
-        { id: 1, title: 'Campaign Dispatched', message: 'Black Friday 2026 sequence dispatched to 24,890 contacts.', category: 'CAMPAIGNS', priority: 'SUCCESS', isRead: false, time: '10 mins ago' },
-        { id: 2, title: 'Invoice Issued', message: 'Monthly subscription invoice INV-202608-0001 ($63.00) issued.', category: 'BILLING', priority: 'NORMAL', isRead: false, time: '1 hour ago' }
-      ]);
+      setNotifications([]);
     }
   };
 

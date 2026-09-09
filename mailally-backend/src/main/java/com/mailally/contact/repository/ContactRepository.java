@@ -33,6 +33,13 @@ public interface ContactRepository extends JpaRepository<Contact, Long> {
 
     Page<Contact> findByOrganizationIdAndIsDeletedFalse(Long organizationId, Pageable pageable);
 
+    /**
+     * High-performance Keyset Cursor Pagination method.
+     * Prevents OFFSET performance degradation on large contact datasets.
+     */
+    @Query("SELECT c FROM Contact c WHERE c.organization.id = :organizationId AND c.isDeleted = false AND c.id > :lastId ORDER BY c.id ASC")
+    List<Contact> findByOrganizationIdAndIdGreaterThanAndIsDeletedFalse(@Param("organizationId") Long organizationId, @Param("lastId") Long lastId, Pageable pageable);
+
     List<Contact> findByOrganizationIdAndIsDeletedFalse(Long organizationId);
 
     List<Contact> findAllByOrganizationIdAndIdInAndIsDeletedFalse(Long organizationId, List<Long> ids);

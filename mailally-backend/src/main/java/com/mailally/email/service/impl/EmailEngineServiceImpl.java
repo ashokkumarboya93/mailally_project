@@ -30,9 +30,11 @@ public class EmailEngineServiceImpl implements EmailEngineService {
 
     @Override
     public EmailSendResult sendEmailWithResult(String to, String toName, String from, String fromName, String replyTo, String subject, String htmlBody) {
-        String senderEmail = (config.getDefaultSenderEmail() != null && !config.getDefaultSenderEmail().isBlank()) 
-                ? config.getDefaultSenderEmail().trim() 
-                : "info@marcamor.com";
+        String senderEmail = (from != null && !from.isBlank() && from.contains("@"))
+                ? from.trim()
+                : ((config.getDefaultSenderEmail() != null && !config.getDefaultSenderEmail().isBlank()) 
+                        ? config.getDefaultSenderEmail().trim() 
+                        : "info@marcamor.com");
         String senderName = (fromName != null && !fromName.isBlank()) ? fromName : config.getDefaultSenderName();
         return providerFactory.sendWithFailover(to, toName, senderEmail, senderName, replyTo, subject, htmlBody);
     }

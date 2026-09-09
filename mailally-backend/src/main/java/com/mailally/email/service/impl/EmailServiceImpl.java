@@ -73,6 +73,7 @@ public class EmailServiceImpl implements EmailService {
     private final CampaignOrchestrator campaignOrchestrator;
     private final com.mailally.email.repository.CampaignRecipientLogRepository recipientLogRepository;
     private final com.mailally.email.repository.EmailEventRepository emailEventRepository;
+    private final com.mailally.notification.service.NotificationService notificationService;
 
     public EmailServiceImpl(EmailRepository emailRepository,
                             EmailQueueRepository emailQueueRepository,
@@ -87,7 +88,8 @@ public class EmailServiceImpl implements EmailService {
                             CampaignAsyncExecutor campaignAsyncExecutor,
                             CampaignOrchestrator campaignOrchestrator,
                             com.mailally.email.repository.CampaignRecipientLogRepository recipientLogRepository,
-                            com.mailally.email.repository.EmailEventRepository emailEventRepository) {
+                            com.mailally.email.repository.EmailEventRepository emailEventRepository,
+                            com.mailally.notification.service.NotificationService notificationService) {
         this.emailRepository = emailRepository;
         this.emailQueueRepository = emailQueueRepository;
         this.campaignRepository = campaignRepository;
@@ -102,6 +104,7 @@ public class EmailServiceImpl implements EmailService {
         this.campaignOrchestrator = campaignOrchestrator;
         this.recipientLogRepository = recipientLogRepository;
         this.emailEventRepository = emailEventRepository;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -171,12 +174,48 @@ public class EmailServiceImpl implements EmailService {
 
         emailValidator.validateCampaignReadyForLaunch(campaign);
 
-        campaign.setStatus("RUNNING");
-        campaignRepository.save(campaign);
-
         List<Contact> contacts = contactRepository.findByOrganizationIdAndIsDeletedFalse(currentUser.getOrganizationId()).stream()
                 .filter(contact -> "SUBSCRIBED".equalsIgnoreCase(contact.getStatus()) || "ACTIVE".equalsIgnoreCase(contact.getStatus()))
                 .collect(Collectors.toList());
+
+        if (contacts.isEmpty()) {
+            try {
+                notificationService.sendNotification(
+                        currentUser.getOrganizationId(),
+                        currentUser.getUserId(),
+                        "CAMPAIGNS",
+                        "Launch Blocked: " + campaign.getName(),
+                        "Campaign launch aborted for '" + campaign.getName() + "'. No active/subscribed recipients found. Please attach contacts before launching.",
+                        "HIGH",
+                        "CAMPAIGNS",
+                        campaign.getId(),
+                        "/campaigns"
+                );
+            } catch (Exception e) {
+                // Ignore
+            }
+            throw new CustomException("Cannot launch campaign '" + campaign.getName() + "': No active contacts found. Please add or import contacts before launching.");
+        }
+
+        campaign.setStatus("RUNNING");
+        campaign.setTotalRecipients(contacts.size());
+        campaignRepository.save(campaign);
+
+        try {
+            notificationService.sendNotification(
+                    currentUser.getOrganizationId(),
+                    currentUser.getUserId(),
+                    "CAMPAIGNS",
+                    "Campaign Launched: " + campaign.getName(),
+                    "Dispatch initiated for '" + campaign.getName() + "' to " + contacts.size() + " recipients.",
+                    "NORMAL",
+                    "CAMPAIGNS",
+                    campaign.getId(),
+                    "/campaigns/" + campaign.getId() + "/analytics"
+            );
+        } catch (Exception e) {
+            // Ignore
+        }
         Template template = campaign.getTemplate();
 
         String fromName = campaign.getFromName() != null ? campaign.getFromName()

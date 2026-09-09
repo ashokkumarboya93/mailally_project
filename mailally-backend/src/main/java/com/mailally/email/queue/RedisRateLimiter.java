@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 /**
  * Multi-tenant rate limiter using the Token Bucket algorithm backed by Redis.
  */
-@Service
+@Service("queueRedisRateLimiter")
 public class RedisRateLimiter {
 
     private final StringRedisTemplate redisTemplate;

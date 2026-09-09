@@ -32,6 +32,8 @@ public class CampaignBatchProcessor {
     private final EmailEngineService emailEngineService;
     private final TemplateVariableEngine variableEngine;
     private final com.mailally.contact.repository.ContactRepository contactRepository;
+    private final com.mailally.notification.service.NotificationService notificationService;
+    private final com.mailally.email.provider.EmailProviderFactory providerFactory;
 
     // Track active campaign progress state in memory for SSE streaming
     private final Map<Long, CampaignLiveProgressDto> activeCampaignState = new ConcurrentHashMap<>();
@@ -43,13 +45,17 @@ public class CampaignBatchProcessor {
                                   CampaignActivityLogRepository activityLogRepository,
                                   EmailEngineService emailEngineService,
                                   TemplateVariableEngine variableEngine,
-                                  com.mailally.contact.repository.ContactRepository contactRepository) {
+                                  com.mailally.contact.repository.ContactRepository contactRepository,
+                                  com.mailally.notification.service.NotificationService notificationService,
+                                  com.mailally.email.provider.EmailProviderFactory providerFactory) {
         this.campaignRepository = campaignRepository;
         this.recipientRepository = recipientRepository;
         this.activityLogRepository = activityLogRepository;
         this.emailEngineService = emailEngineService;
         this.variableEngine = variableEngine;
         this.contactRepository = contactRepository;
+        this.notificationService = notificationService;
+        this.providerFactory = providerFactory;
     }
 
     public CampaignLiveProgressDto getLiveProgress(Long campaignId) {
@@ -88,9 +94,11 @@ public class CampaignBatchProcessor {
 
         logActivity(campaignId, "STARTED", "High-performance parallel email engine initialized.", "INFO");
 
-        long total = recipientRepository.countByCampaignId(campaignId);
-        if (total == 0) {
-            // Auto-populate recipients from contacts table for this organization!
+        // 1. Identify existing campaign recipients
+        List<CampaignRecipient> existingRecipients = recipientRepository.findByCampaignId(campaignId);
+        
+        // 2. Only auto-populate from organization contacts if NO specific contacts were explicitly selected for this campaign
+        if (existingRecipients.isEmpty()) {
             List<com.mailally.contact.entity.Contact> contactsList = contactRepository.findByOrganizationIdAndIsDeletedFalse(orgId).stream()
                     .filter(c -> c.getEmail() != null && !c.getEmail().isBlank() && c.getEmail().contains("@"))
                     .filter(c -> c.getStatus() == null || (
@@ -101,7 +109,7 @@ public class CampaignBatchProcessor {
                     ))
                     .collect(java.util.stream.Collectors.toList());
 
-            List<CampaignRecipient> newRecipients = new ArrayList<>();
+            List<CampaignRecipient> newlyAddedRecipients = new ArrayList<>();
             com.mailally.organization.entity.Organization org = campaign.getOrganization();
             for (com.mailally.contact.entity.Contact c : contactsList) {
                 CampaignRecipient r = new CampaignRecipient();
@@ -109,27 +117,28 @@ public class CampaignBatchProcessor {
                 r.setContact(c);
                 r.setOrganization(org);
                 r.setStatus("QUEUED");
-                newRecipients.add(r);
+                newlyAddedRecipients.add(r);
             }
-            if (!newRecipients.isEmpty()) {
-                recipientRepository.saveAll(newRecipients);
-                total = newRecipients.size();
-                campaign.setTotalRecipients((int) total);
-                campaignRepository.save(campaign);
-                log.info("Auto-populated {} queued recipients for campaign ID {}", total, campaignId);
+            if (!newlyAddedRecipients.isEmpty()) {
+                recipientRepository.saveAll(newlyAddedRecipients);
+                log.info("Auto-populated {} queued recipients for campaign ID {}", newlyAddedRecipients.size(), campaignId);
             }
-        } else {
-            // Reset existing recipients to QUEUED status on relaunch so they are re-sent
-            List<CampaignRecipient> existing = recipientRepository.findByCampaignId(campaignId);
-            for (CampaignRecipient r : existing) {
-                r.setStatus("QUEUED");
-                r.setFailureReason(null);
-                r.setSentAt(null);
-                r.setDeliveredAt(null);
-                r.setFailedAt(null);
-            }
-            recipientRepository.saveAll(existing);
         }
+
+        // 3. Reset ALL assigned recipients for this campaign to QUEUED status for execution
+        List<CampaignRecipient> allRecipients = recipientRepository.findByCampaignId(campaignId);
+        for (CampaignRecipient r : allRecipients) {
+            r.setStatus("QUEUED");
+            r.setFailureReason(null);
+            r.setSentAt(null);
+            r.setDeliveredAt(null);
+            r.setFailedAt(null);
+        }
+        recipientRepository.saveAll(allRecipients);
+
+        long total = allRecipients.size();
+        campaign.setTotalRecipients((int) total);
+        campaignRepository.save(campaign);
 
         CampaignLiveProgressDto state = new CampaignLiveProgressDto();
         state.setCampaignId(campaignId);
@@ -176,81 +185,194 @@ public class CampaignBatchProcessor {
             }
             recipientRepository.saveAll(recipients);
 
-            // Execute parallel dispatches across Virtual Threads
-            try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            com.mailally.email.provider.EmailProvider activeProvider = providerFactory.getActiveProvider();
+            if (activeProvider != null && activeProvider.supportsBulk()) {
+                // High-speed Bulk Batch Dispatch via Provider Batch API (e.g. Brevo messageVersions)
+                List<com.mailally.email.provider.RecipientBatchItem> batchItems = new ArrayList<>();
+                List<CampaignRecipient> validRecipients = new ArrayList<>();
+
+                final String campaignSubject = campaign.getSubject();
+                final String templateHtml = campaign.getTemplate() != null ? campaign.getTemplate().getHtmlContent() : "";
+                final String campaignName = campaign.getName();
+                final String orgName = (campaign.getOrganization() != null) ? campaign.getOrganization().getName() : "MailAlly Organization";
+                final String fromEmail = (campaign.getSenderEmail() != null && !campaign.getSenderEmail().isBlank()) 
+                        ? campaign.getSenderEmail().trim() 
+                        : (campaign.getFromEmail() != null ? campaign.getFromEmail().trim() : "info@marcamor.com");
+                final String fromName = (campaign.getSenderName() != null && !campaign.getSenderName().isBlank()) 
+                        ? campaign.getSenderName().trim() 
+                        : (campaign.getFromName() != null ? campaign.getFromName().trim() : "MailAlly");
+
                 for (CampaignRecipient recipient : recipients) {
                     if (Boolean.TRUE.equals(cancelRequests.get(campaignId))) break;
 
-                    final String orgName = (campaign.getOrganization() != null) ? campaign.getOrganization().getName() : "MailAlly Organization";
+                    final com.mailally.contact.entity.Contact contact = recipient.getContact();
+                    final String recipientEmail = (contact != null && contact.getEmail() != null) ? contact.getEmail().trim() : "";
+                    final String recipientFirstName = (contact != null && contact.getFirstName() != null) ? contact.getFirstName() : "";
+                    final String recipientLastName = (contact != null && contact.getLastName() != null) ? contact.getLastName() : "";
+                    final String recipientName = (recipientFirstName + " " + recipientLastName).trim();
 
-                    executor.submit(() -> {
-                        try {
-                            String personalizedSubject;
-                            String personalizedBody;
-                            try {
-                                personalizedSubject = variableEngine.renderTemplate(
-                                        campaign.getSubject(), recipient.getContact(), campaign.getName(), orgName);
-                                personalizedBody = campaign.getTemplate() != null ? variableEngine.renderTemplate(
-                                        campaign.getTemplate().getHtmlContent(), recipient.getContact(), campaign.getName(), orgName) : "";
-                            } catch (Exception tEx) {
-                                templateFailures.incrementAndGet();
-                                throw new RuntimeException("Template Rendering Failure: " + tEx.getMessage(), tEx);
-                            }
+                    if (recipientEmail.isBlank() || !recipientEmail.contains("@")) {
+                        recipient.setStatus("FAILED");
+                        recipient.setFailureReason("Invalid Recipient Email Address: " + recipientEmail);
+                        recipient.setFailedAt(LocalDateTime.now());
+                        invalidRecipientFailures.incrementAndGet();
+                        failed.incrementAndGet();
+                        processed.incrementAndGet();
+                        continue;
+                    }
 
-                            String fromEmail = (campaign.getSenderEmail() != null && !campaign.getSenderEmail().isBlank()) 
-                                    ? campaign.getSenderEmail().trim() 
-                                    : (campaign.getFromEmail() != null ? campaign.getFromEmail().trim() : "info@marcamor.com");
-                            String fromName = (campaign.getSenderName() != null && !campaign.getSenderName().isBlank()) 
-                                    ? campaign.getSenderName().trim() 
-                                    : (campaign.getFromName() != null ? campaign.getFromName().trim() : "Marcamor");
+                    String personalizedSubject;
+                    String personalizedBody;
+                    try {
+                        personalizedSubject = variableEngine.renderTemplate(campaignSubject, contact, campaignName, orgName);
+                        personalizedBody = (templateHtml != null && !templateHtml.isBlank()) ? variableEngine.renderTemplate(templateHtml, contact, campaignName, orgName) : "Hello " + recipientName;
+                    } catch (Exception tEx) {
+                        recipient.setStatus("FAILED");
+                        recipient.setFailureReason("Template Rendering Failure: " + tEx.getMessage());
+                        recipient.setFailedAt(LocalDateTime.now());
+                        templateFailures.incrementAndGet();
+                        failed.incrementAndGet();
+                        processed.incrementAndGet();
+                        continue;
+                    }
 
-                            com.mailally.email.provider.EmailSendResult sendResult = emailEngineService.sendEmailWithResult(
-                                    recipient.getContact().getEmail(),
-                                    recipient.getContact().getFirstName() + " " + recipient.getContact().getLastName(),
-                                    fromEmail,
-                                    fromName,
-                                    fromEmail,
-                                    personalizedSubject,
-                                    personalizedBody
-                            );
+                    batchItems.add(new com.mailally.email.provider.RecipientBatchItem(
+                            recipient.getId(),
+                            recipientEmail,
+                            recipientFirstName,
+                            recipientLastName,
+                            null,
+                            personalizedSubject,
+                            personalizedBody
+                    ));
+                    validRecipients.add(recipient);
+                }
 
-                            if (sendResult.isSuccess()) {
-                                recipient.setStatus("DELIVERED");
-                                if (sendResult.getResponseId() != null && !sendResult.getResponseId().isBlank()) {
-                                    recipient.setResponseId(sendResult.getResponseId());
-                                }
-                                recipient.setSentAt(LocalDateTime.now());
-                                recipient.setDeliveredAt(LocalDateTime.now());
-                                delivered.incrementAndGet();
-                            } else {
-                                recipient.setStatus("FAILED");
-                                String reason = sendResult.getErrorMessage() != null ? sendResult.getErrorMessage() : "Email provider dispatch returned failure response";
-                                recipient.setFailureReason(reason);
-                                recipient.setFailedAt(LocalDateTime.now());
-                                failed.incrementAndGet();
+                if (!batchItems.isEmpty()) {
+                    String idempotencyKey = "CMP-" + campaignId + "-B" + System.currentTimeMillis();
+                    com.mailally.email.provider.BatchSendResult batchResult = providerFactory.sendBatchWithFailover(
+                            batchItems,
+                            fromEmail,
+                            fromName,
+                            fromEmail,
+                            campaignSubject,
+                            templateHtml,
+                            idempotencyKey
+                    );
 
-                                if (reason.contains("[AUTH_FAILURE]")) authFailures.incrementAndGet();
-                                else if (reason.contains("[CONNECTION_FAILURE]")) connectionFailures.incrementAndGet();
-                                else if (reason.contains("[INVALID_SENDER]") || reason.contains("Invalid Recipient")) invalidRecipientFailures.incrementAndGet();
-                                else providerErrors.incrementAndGet();
-                            }
-                        } catch (Exception e) {
+                    boolean isBatchSuccess = batchResult.isSuccess();
+                    Map<Long, String> msgMap = batchResult.getRecipientMessageIds();
+
+                    for (CampaignRecipient recipient : validRecipients) {
+                        if (isBatchSuccess) {
+                            recipient.setStatus("DELIVERED");
+                            String msgId = (msgMap != null && msgMap.containsKey(recipient.getId())) ? msgMap.get(recipient.getId()) : batchResult.getBatchMessageId();
+                            recipient.setResponseId(msgId != null ? msgId : batchResult.getBatchMessageId());
+                            recipient.setSentAt(LocalDateTime.now());
+                            recipient.setDeliveredAt(LocalDateTime.now());
+                            delivered.incrementAndGet();
+                        } else {
                             recipient.setStatus("FAILED");
-                            String errMsg = e.getClass().getName() + ": " + e.getMessage();
-                            recipient.setFailureReason(errMsg);
+                            String reason = batchResult.getErrorMessage() != null ? batchResult.getErrorMessage() : "Batch dispatch failed";
+                            recipient.setFailureReason(reason);
                             recipient.setFailedAt(LocalDateTime.now());
                             failed.incrementAndGet();
-                            if (errMsg.contains("Template Rendering Failure")) {
-                                // Already counted
-                            } else {
-                                providerErrors.incrementAndGet();
-                            }
-                        } finally {
-                            processed.incrementAndGet();
+                            if (reason.contains("[AUTH_FAILURE]")) authFailures.incrementAndGet();
+                            else if (reason.contains("[CONNECTION_FAILURE]")) connectionFailures.incrementAndGet();
+                            else providerErrors.incrementAndGet();
                         }
-                    });
+                        processed.incrementAndGet();
+                    }
                 }
-            } // Auto-closes and waits for all parallel virtual threads in batch to complete
+            } else {
+                // Fallback parallel single dispatches across Virtual Threads
+                try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+                    for (CampaignRecipient recipient : recipients) {
+                        if (Boolean.TRUE.equals(cancelRequests.get(campaignId))) break;
+
+                        final com.mailally.contact.entity.Contact contact = recipient.getContact();
+                        final String recipientEmail = (contact != null && contact.getEmail() != null) ? contact.getEmail().trim() : "";
+                        final String recipientFirstName = (contact != null && contact.getFirstName() != null) ? contact.getFirstName() : "";
+                        final String recipientLastName = (contact != null && contact.getLastName() != null) ? contact.getLastName() : "";
+                        final String recipientName = (recipientFirstName + " " + recipientLastName).trim();
+                        final String campaignSubject = campaign.getSubject();
+                        final String templateHtml = campaign.getTemplate() != null ? campaign.getTemplate().getHtmlContent() : "";
+                        final String campaignName = campaign.getName();
+                        final String orgName = (campaign.getOrganization() != null) ? campaign.getOrganization().getName() : "MailAlly Organization";
+                        final String fromEmail = (campaign.getSenderEmail() != null && !campaign.getSenderEmail().isBlank()) 
+                                ? campaign.getSenderEmail().trim() 
+                                : (campaign.getFromEmail() != null ? campaign.getFromEmail().trim() : "info@marcamor.com");
+                        final String fromName = (campaign.getSenderName() != null && !campaign.getSenderName().isBlank()) 
+                                ? campaign.getSenderName().trim() 
+                                : (campaign.getFromName() != null ? campaign.getFromName().trim() : "MailAlly");
+
+                        executor.submit(() -> {
+                            try {
+                                if (recipientEmail.isBlank() || !recipientEmail.contains("@")) {
+                                    invalidRecipientFailures.incrementAndGet();
+                                    throw new RuntimeException("Invalid Recipient Email Address: " + recipientEmail);
+                                }
+
+                                String personalizedSubject;
+                                String personalizedBody;
+                                try {
+                                    personalizedSubject = variableEngine.renderTemplate(
+                                            campaignSubject, contact, campaignName, orgName);
+                                    personalizedBody = (templateHtml != null && !templateHtml.isBlank()) ? variableEngine.renderTemplate(
+                                            templateHtml, contact, campaignName, orgName) : "Hello " + recipientName;
+                                } catch (Exception tEx) {
+                                    templateFailures.incrementAndGet();
+                                    throw new RuntimeException("Template Rendering Failure: " + tEx.getMessage(), tEx);
+                                }
+
+                                com.mailally.email.provider.EmailSendResult sendResult = emailEngineService.sendEmailWithResult(
+                                        recipientEmail,
+                                        recipientName,
+                                        fromEmail,
+                                        fromName,
+                                        fromEmail,
+                                        personalizedSubject,
+                                        personalizedBody
+                                );
+
+                                if (sendResult.isSuccess()) {
+                                    recipient.setStatus("DELIVERED");
+                                    if (sendResult.getResponseId() != null && !sendResult.getResponseId().isBlank()) {
+                                        recipient.setResponseId(sendResult.getResponseId());
+                                    }
+                                    recipient.setSentAt(LocalDateTime.now());
+                                    recipient.setDeliveredAt(LocalDateTime.now());
+                                    delivered.incrementAndGet();
+                                } else {
+                                    recipient.setStatus("FAILED");
+                                    String reason = sendResult.getErrorMessage() != null ? sendResult.getErrorMessage() : "Email provider dispatch returned failure response";
+                                    recipient.setFailureReason(reason);
+                                    recipient.setFailedAt(LocalDateTime.now());
+                                    failed.incrementAndGet();
+
+                                    if (reason.contains("[AUTH_FAILURE]")) authFailures.incrementAndGet();
+                                    else if (reason.contains("[CONNECTION_FAILURE]")) connectionFailures.incrementAndGet();
+                                    else if (reason.contains("[INVALID_SENDER]") || reason.contains("Invalid Recipient")) invalidRecipientFailures.incrementAndGet();
+                                    else providerErrors.incrementAndGet();
+                                }
+                            } catch (Exception e) {
+                                recipient.setStatus("FAILED");
+                                String errMsg = e.getClass().getName() + ": " + e.getMessage();
+                                recipient.setFailureReason(errMsg);
+                                recipient.setFailedAt(LocalDateTime.now());
+                                failed.incrementAndGet();
+                                if (errMsg.contains("Template Rendering Failure")) {
+                                    // Already counted
+                                } else {
+                                    providerErrors.incrementAndGet();
+                                }
+                            } finally {
+                                processed.incrementAndGet();
+                            }
+                        });
+                    }
+                }
+            }
 
             // Single batch save after parallel dispatches finish
             recipientRepository.saveAll(recipients);
@@ -271,10 +393,11 @@ public class CampaignBatchProcessor {
             int pct = total > 0 ? (int) ((pCount * 100) / total) : 100;
             state.setProgressPercentage(pct);
 
-            long elapsedSec = Math.max(1, (System.currentTimeMillis() - startTimeMs) / 1000);
+            long totalMs = Math.max(1, System.currentTimeMillis() - startTimeMs);
+            double totalSec = totalMs / 1000.0;
             logActivity(campaignId, "BATCH_COMPLETED", 
-                    String.format("Dispatched parallel batch of %d recipients in %d sec (Speed: %d msgs/sec).", 
-                            recipients.size(), elapsedSec, (pCount / elapsedSec)), "SUCCESS");
+                    String.format("Dispatched batch of %d recipients in %.2f sec.", 
+                            recipients.size(), totalSec), "SUCCESS");
         }
 
         if (!"CANCELLED".equals(state.getStatus())) {
@@ -285,10 +408,27 @@ public class CampaignBatchProcessor {
 
             state.setStatus("COMPLETED");
             state.setProgressPercentage(100);
-            long totalTimeSec = Math.max(1, (System.currentTimeMillis() - startTimeMs) / 1000);
+            long totalMs = Math.max(1, System.currentTimeMillis() - startTimeMs);
+            double totalSec = totalMs / 1000.0;
             logActivity(campaignId, "FINISHED", 
-                    String.format("High-speed campaign completed in %d seconds! Delivered: %d, Failed: %d (Avg throughput: %d emails/sec).", 
-                            totalTimeSec, delivered.get(), failed.get(), (total > 0 ? total / totalTimeSec : 0)), "SUCCESS");
+                    String.format("High-speed campaign completed in %.2f seconds (%d ms)! Delivered: %d, Failed: %d.", 
+                            totalSec, totalMs, delivered.get(), failed.get()), "SUCCESS");
+
+            try {
+                notificationService.sendNotification(
+                        campaign.getOrganization().getId(),
+                        campaign.getCreatedBy(),
+                        "CAMPAIGNS",
+                        "Campaign Completed: " + campaign.getName(),
+                        String.format("Campaign '%s' completed dispatch. %d delivered, %d failed.", campaign.getName(), delivered.get(), failed.get()),
+                        failed.get() > 0 ? "WARNING" : "SUCCESS",
+                        "CAMPAIGNS",
+                        campaign.getId(),
+                        "/campaigns/" + campaign.getId() + "/analytics"
+                );
+            } catch (Exception e) {
+                // Ignore notification error
+            }
         }
     }
 

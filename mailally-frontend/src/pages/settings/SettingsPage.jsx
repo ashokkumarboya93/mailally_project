@@ -252,11 +252,25 @@ export const SettingsPage = () => {
             <div className="space-y-5">
               <div>
                 <label className="block text-xs font-bold text-[#18181B] mb-1.5">
+                  Active Dispatch Provider
+                </label>
+                <select
+                  value={settings.EMAIL.active_provider || 'BREVO'}
+                  onChange={(e) => handleInputChange('EMAIL', 'active_provider', e.target.value)}
+                  className="w-full h-11 px-4 rounded-xl border border-[#18181B] text-xs font-semibold text-[#18181B] outline-none bg-white"
+                >
+                  <option value="BREVO">Brevo REST API v3 (Sendinblue)</option>
+                  <option value="SES">Amazon SES v2 (AWS Simple Email Service)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#18181B] mb-1.5">
                   Daily Sending Quota Limit
                 </label>
                 <input
                   type="number"
-                  value={settings.EMAIL.daily_send_limit}
+                  value={settings.EMAIL.daily_send_limit || '50000'}
                   onChange={(e) => handleInputChange('EMAIL', 'daily_send_limit', e.target.value)}
                   className="w-full h-11 px-4 rounded-xl border border-[#18181B] text-xs font-semibold text-[#18181B] outline-none"
                 />
@@ -264,8 +278,8 @@ export const SettingsPage = () => {
 
               <div className="flex items-center justify-between p-4 rounded-xl border border-[#E4E4E7] bg-[#FAFAFA]">
                 <div>
-                  <h4 className="text-xs font-bold text-[#18181B]">Automatic SMTP Provider Fallback</h4>
-                  <p className="text-[11px] text-[#71717A] font-medium">Reroute emails automatically if primary provider triggers 4xx/5xx bounce</p>
+                  <h4 className="text-xs font-bold text-[#18181B]">Automatic Provider Failover (Brevo ↔ Amazon SES)</h4>
+                  <p className="text-[11px] text-[#71717A] font-medium">Reroute emails automatically between Brevo and Amazon SES if primary provider encounters errors</p>
                 </div>
                 <input
                   type="checkbox"

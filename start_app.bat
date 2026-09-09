@@ -5,8 +5,13 @@ echo =======================================================
 
 cd /d "%~dp0"
 
+if exist "C:\Program Files\Java\jdk-21.0.10" (
+    set "JAVA_HOME=C:\Program Files\Java\jdk-21.0.10"
+    set "PATH=C:\Program Files\Java\jdk-21.0.10\bin;%PATH%"
+)
+
 echo 1. Launching Spring Boot Backend (Port 8081)...
-start "MailAlly Backend" cmd /k "cd mailally-backend && mvnw.cmd spring-boot:run"
+start "MailAlly Backend" cmd /k "cd mailally-backend && set JAVA_HOME=C:\Program Files\Java\jdk-21.0.10&& set PATH=C:\Program Files\Java\jdk-21.0.10\bin;%%PATH%%&& mvnw.cmd spring-boot:run"
 
 echo 2. Launching React Vite Frontend (Port 5173)...
 start "MailAlly Frontend" cmd /k "cd mailally-frontend && npm run dev"

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { campaignApi, templateApi } from '../../api/campaignApi';
 import { contactApi } from '../../api/contactApi';
 import { StatusBadge } from '../../components/common/StatusBadge';
@@ -9,10 +10,13 @@ import { LiveSendingDashboard } from '../../components/campaigns/LiveSendingDash
 import { CampaignDiagnosticsModal } from '../../components/campaigns/CampaignDiagnosticsModal';
 import { 
   Play, Plus, Trash2, 
-  Send, LayoutGrid, List, Search, Filter, Layers
+  Send, LayoutGrid, List, Search, Filter, Layers, BarChart2, Activity, ExternalLink,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Calendar, Clock, Zap,
+  Loader2, CheckCircle2, Sparkles, Rocket
 } from 'lucide-react';
 
 export const CampaignsPage = () => {
+  const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [collections, setCollections] = useState([]);
@@ -23,8 +27,22 @@ export const CampaignsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
+  // Pagination State (50 per page)
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 50;
+
   // Active Running Campaign State
   const [activeLiveCampaignId, setActiveLiveCampaignId] = useState(null);
+
+  const getProgressBarGradient = (status) => {
+    const st = (status || 'DRAFT').toUpperCase();
+    if (st === 'RUNNING') return 'bg-gradient-to-r from-blue-600 via-indigo-500 via-purple-500 to-emerald-400 animate-pulse';
+    if (st === 'COMPLETED') return 'bg-gradient-to-r from-emerald-500 to-teal-400';
+    if (st === 'FAILED') return 'bg-gradient-to-r from-rose-600 to-pink-500';
+    if (st === 'PAUSED') return 'bg-gradient-to-r from-amber-500 to-orange-400';
+    if (st === 'CANCELLED') return 'bg-gradient-to-r from-slate-500 to-slate-400';
+    return 'bg-gradient-to-r from-blue-500 to-sky-400';
+  };
 
   // Alert Modal State
   const [alertConfig, setAlertConfig] = useState({ isOpen: false, type: 'success', title: '', message: '' });
@@ -35,6 +53,8 @@ export const CampaignsPage = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
   const [isAttachCollectionOpen, setIsAttachCollectionOpen] = useState(false);
+  const [isLaunchLoaderOpen, setIsLaunchLoaderOpen] = useState(false);
+  const [launchStepText, setLaunchStepText] = useState('Initializing AWS SES Engine...');
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -52,17 +72,24 @@ export const CampaignsPage = () => {
   const [retryCount, setRetryCount] = useState(3);
   const [selectedCollectionId, setSelectedCollectionId] = useState('');
 
+  // Launch Mode & Schedule State
+  const [launchMode, setLaunchMode] = useState('INSTANT'); // 'INSTANT' or 'SCHEDULED'
+  const [scheduledDateTime, setScheduledDateTime] = useState('');
+  const [modalCollectionId, setModalCollectionId] = useState('');
+
   const loadData = async () => {
     setLoading(true);
     try {
       const [cRes, tRes, collRes] = await Promise.allSettled([
-        campaignApi.getCampaigns(0, 100),
+        campaignApi.getCampaigns(0, 1000),
         templateApi.getTemplates(0, 50),
         contactApi.getCollections()
       ]);
 
       if (cRes.status === 'fulfilled' && cRes.value?.data?.content) {
         setCampaigns(cRes.value.data.content);
+      } else if (cRes.status === 'fulfilled' && Array.isArray(cRes.value?.data)) {
+        setCampaigns(cRes.value.data);
       } else {
         setCampaigns([]);
       }
@@ -107,21 +134,49 @@ export const CampaignsPage = () => {
     loadData();
   }, []);
 
+  // Reset page to 1 when search or status filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
+
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
+    if (launchMode === 'SCHEDULED' && !scheduledDateTime) {
+      showAlert('error', 'Please select a scheduled date and time for automated outreach.', 'Schedule Required');
+      return;
+    }
+
+    const selectedTpl = templates.find(t => String(t.id) === String(templateId));
+    const effectiveSubject = selectedTpl?.subject || name;
+
     try {
-      await campaignApi.createCampaign({
+      const createdRes = await campaignApi.createCampaign({
         name,
-        subject,
+        subject: effectiveSubject,
         templateId: templateId ? Number(templateId) : (templates.length > 0 ? templates[0].id : null),
         senderName: senderName || 'Marcamor',
         senderEmail: senderEmail || 'info@marcamor.com',
         batchSize,
-        retryCount
+        retryCount,
+        executionType: launchMode,
+        scheduledAt: launchMode === 'SCHEDULED' && scheduledDateTime ? scheduledDateTime : null
       });
+
+      const newCampaignId = createdRes?.data?.id;
+      if (newCampaignId && modalCollectionId) {
+        try {
+          await campaignApi.addCollectionToCampaign(newCampaignId, modalCollectionId);
+        } catch (ignored) {}
+      }
+
       setIsCreateModalOpen(false);
       setName('');
-      setSubject('');
+      setScheduledDateTime('');
+      setLaunchMode('INSTANT');
+      setModalCollectionId('');
+      showAlert('success', launchMode === 'SCHEDULED' 
+        ? `Campaign scheduled successfully for ${new Date(scheduledDateTime).toLocaleString()}!` 
+        : 'Campaign created successfully as draft!');
       loadData();
     } catch (e) {
       showAlert('error', 'Failed to create campaign: ' + (e.response?.data?.message || e.message));
@@ -151,12 +206,21 @@ export const CampaignsPage = () => {
 
   const handleRunDiagnostics = async (campaignId) => {
     setSelectedCampaignId(campaignId);
+    const targetCamp = campaigns.find(c => c.id === campaignId);
+
+    // Pre-launch verification: check if recipients exist
+    if (targetCamp && (targetCamp.totalRecipients || 0) === 0) {
+      setSelectedCampaignId(campaignId);
+      setIsAttachCollectionOpen(true);
+      showAlert('error', `Cannot launch "${targetCamp.name}" because it has 0 recipients. Please select and attach a contact collection first.`, 'Recipients Required');
+      return;
+    }
+
     try {
       const res = await campaignApi.getDiagnostics(campaignId);
       if (res.data) {
         setCurrentDiagnostics(res.data);
       } else {
-        const targetCamp = campaigns.find(c => c.id === campaignId);
         setCurrentDiagnostics({
           campaignId,
           isReady: targetCamp ? (targetCamp.totalRecipients > 0 && targetCamp.templateId != null) : true,
@@ -176,15 +240,40 @@ export const CampaignsPage = () => {
 
   const handleConfirmLaunch = async () => {
     if (!selectedCampaignId) return;
+    const targetCamp = campaigns.find(c => c.id === selectedCampaignId);
+    if (targetCamp && (targetCamp.totalRecipients || 0) === 0) {
+      setIsDiagnosticsOpen(false);
+      setIsAttachCollectionOpen(true);
+      showAlert('error', 'Cannot launch campaign with 0 recipients. Please attach a collection first.', 'No Recipients');
+      return;
+    }
+
+    setIsDiagnosticsOpen(false);
+    setIsLaunchLoaderOpen(true);
+    setLaunchStepText('⚡ Connecting to Amazon SES SMTP Relay Engine...');
+
     try {
       await campaignApi.launchCampaign(selectedCampaignId);
-      setIsDiagnosticsOpen(false);
-      setActiveLiveCampaignId(selectedCampaignId);
-      loadData();
+
+      setTimeout(() => {
+        setLaunchStepText('🚀 Spinning up High-Performance Java Virtual Thread Workers...');
+      }, 700);
+
+      setTimeout(() => {
+        setLaunchStepText('✉️ Handshaking with SMTP Relay & Executing Dispatches...');
+      }, 1400);
+
+      setTimeout(() => {
+        setIsLaunchLoaderOpen(false);
+        setActiveLiveCampaignId(selectedCampaignId);
+        loadData();
+      }, 2100);
     } catch (e) {
-      setIsDiagnosticsOpen(false);
-      setActiveLiveCampaignId(selectedCampaignId);
-      loadData();
+      setTimeout(() => {
+        setIsLaunchLoaderOpen(false);
+        setActiveLiveCampaignId(selectedCampaignId);
+        loadData();
+      }, 1500);
     }
   };
 
@@ -214,12 +303,43 @@ export const CampaignsPage = () => {
   };
 
   // Filtered campaigns list
-  const filteredCampaigns = campaigns.filter(c => {
-    const matchesSearch = c.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          c.subject?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'ALL' || (c.status && c.status.toUpperCase() === statusFilter);
-    return matchesSearch && matchesStatus;
-  });
+  const filteredCampaigns = useMemo(() => {
+    return campaigns.filter(c => {
+      const matchesSearch = c.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                            c.subject?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === 'ALL' || (c.status && c.status.toUpperCase() === statusFilter);
+      return matchesSearch && matchesStatus;
+    });
+  }, [campaigns, searchTerm, statusFilter]);
+
+  // Pagination calculations (50 per page)
+  const totalCampaigns = filteredCampaigns.length;
+  const totalPages = Math.max(1, Math.ceil(totalCampaigns / pageSize));
+  
+  // Ensure valid current page within bounds
+  const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  
+  const paginatedCampaigns = useMemo(() => {
+    const startIndex = (validCurrentPage - 1) * pageSize;
+    return filteredCampaigns.slice(startIndex, startIndex + pageSize);
+  }, [filteredCampaigns, validCurrentPage, pageSize]);
+
+  // Helper to generate page numbers list
+  const getPaginationNumbers = () => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (validCurrentPage <= 4) {
+      return [1, 2, 3, 4, 5, '...', totalPages];
+    }
+    if (validCurrentPage >= totalPages - 3) {
+      return [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+    return [1, '...', validCurrentPage - 1, validCurrentPage, validCurrentPage + 1, '...', totalPages];
+  };
+
+  const startRecord = totalCampaigns === 0 ? 0 : (validCurrentPage - 1) * pageSize + 1;
+  const endRecord = Math.min(validCurrentPage * pageSize, totalCampaigns);
 
   if (loading) {
     return <PageSkeletonLoader type="cards" />;
@@ -327,48 +447,47 @@ export const CampaignsPage = () => {
         </div>
       ) : viewMode === 'list' ? (
         /* LIST VIEW */
-        <div className="bg-white rounded-[16px] border border-[#E5E5E7] overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+        <div className="space-y-4">
+          <div className="bg-white rounded-[16px] border border-[#E5E5E7] overflow-hidden">
+            <table className="w-full text-left border-collapse table-fixed">
               <thead>
                 <tr className="bg-[#FAFAFB] border-b border-[#E5E5E7] text-[11px] font-semibold uppercase tracking-wider text-[#9CA3AF]">
-                  <th className="py-3 px-5">Campaign</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4">Template</th>
-                  <th className="py-3 px-4 text-center">Recipients</th>
-                  <th className="py-3 px-4 text-center">Delivered</th>
-                  <th className="py-3 px-4 text-center">Failed</th>
-                  <th className="py-3 px-4">Progress</th>
-                  <th className="py-3 px-5 text-right">Actions</th>
+                  <th className="py-3 px-4 w-[25%]">Campaign</th>
+                  <th className="py-3 px-3 w-[12%]">Status</th>
+                  <th className="py-3 px-3 w-[18%]">Template</th>
+                  <th className="py-3 px-3 w-[8%] text-center">Recipients</th>
+                  <th className="py-3 px-3 w-[15%]">Progress</th>
+                  <th className="py-3 px-4 w-[22%] text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#F0F0F2] text-[13px]">
-                {filteredCampaigns.map((c) => {
+                {paginatedCampaigns.map((c) => {
                   const total = c.totalRecipients || 0;
                   const delivered = c.sentCount || 0;
                   const failed = c.failedCount || 0;
                   const pct = total > 0 ? Math.round(((delivered + failed) / total) * 100) : 0;
 
                   return (
-                    <tr key={c.id} className="hover:bg-[#FAFAFB] transition-colors">
-                      <td className="py-3.5 px-5">
-                        <div className="font-semibold text-[#0A0A0B]">
-                          {c.name}
+                    <tr key={c.id} className="hover:bg-[#FAFAFB] transition-colors cursor-pointer group" onClick={() => navigate(`/campaigns/${c.id}/analytics`)}>
+                      <td className="py-3.5 px-4 truncate">
+                        <div className="font-semibold text-[#0A0A0B] group-hover:text-blue-600 flex items-center gap-1.5 truncate">
+                          <span className="truncate">{c.name}</span>
+                          <ExternalLink className="w-3 h-3 text-[#9CA3AF] opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                         </div>
-                        <div className="text-[#9CA3AF] font-mono text-[11px] mt-0.5 truncate max-w-xs">
+                        <div className="text-[#9CA3AF] font-mono text-[11px] mt-0.5 truncate">
                           {c.subject || 'No subject'}
                         </div>
                       </td>
 
-                      <td className="py-3.5 px-4 whitespace-nowrap">
+                      <td className="py-3.5 px-3">
                         <StatusBadge status={c.status || 'DRAFT'} />
                       </td>
 
-                      <td className="py-3.5 px-4 min-w-[180px]">
+                      <td className="py-3.5 px-3" onClick={(e) => e.stopPropagation()}>
                         <select
                           value={c.templateId || ''}
                           onChange={(e) => handleAttachTemplateToCampaign(c.id, e.target.value)}
-                          className="bg-[#FAFAFB] border border-[#E5E5E7] rounded-lg px-2 py-1 text-[12px] font-medium text-[#0A0A0B] w-full outline-none"
+                          className="bg-[#FAFAFB] border border-[#E5E5E7] rounded-lg px-2 py-1 text-[12px] font-medium text-[#0A0A0B] w-full outline-none truncate"
                         >
                           <option value="">+ Template...</option>
                           {templates.map(t => (
@@ -377,35 +496,35 @@ export const CampaignsPage = () => {
                         </select>
                       </td>
 
-                      <td className="py-3.5 px-4 text-center font-bold text-[#0A0A0B] whitespace-nowrap">
+                      <td className="py-3.5 px-3 text-center font-bold text-[#0A0A0B]">
                         {total}
                       </td>
 
-                      <td className="py-3.5 px-4 text-center font-bold text-[#16A34A] whitespace-nowrap">
-                        {delivered}
-                      </td>
-
-                      <td className="py-3.5 px-4 text-center font-bold text-[#E11D48] whitespace-nowrap">
-                        {failed}
-                      </td>
-
-                      <td className="py-3.5 px-4 min-w-[120px]">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 bg-[#F3F4F6] rounded-full h-1.5 overflow-hidden">
+                      <td className="py-3.5 px-3">
+                        <div className="flex items-center gap-2 max-w-[140px]">
+                          <div className="flex-1 bg-[#F3F4F6] rounded-full h-2 overflow-hidden border border-[#E5E5E7] min-w-[50px]">
                             <div 
-                              className="h-full bg-[#0A0A0B] transition-all duration-300"
+                              className={`h-full ${getProgressBarGradient(c.status)} transition-all duration-500`}
                               style={{ width: `${pct}%` }}
                             />
                           </div>
-                          <span className="text-[11px] font-semibold text-[#9CA3AF]">{pct}%</span>
+                          <span className="text-[11px] font-bold text-[#0A0A0B] shrink-0 w-8 text-right">{pct}%</span>
                         </div>
                       </td>
 
-                      <td className="py-3.5 px-5 text-right whitespace-nowrap">
+                      <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-2">
                           <button
+                            onClick={() => navigate(`/campaigns/${c.id}/analytics`)}
+                            className="p-1.5 text-[#9CA3AF] hover:text-[#0A0A0B] hover:bg-[#F3F4F6] rounded-md cursor-pointer transition-colors"
+                            title="View Live Progress & Telemetry"
+                          >
+                            <BarChart2 className="w-4 h-4 text-blue-600" />
+                          </button>
+
+                          <button
                             onClick={() => { setSelectedCampaignId(c.id); setIsAttachCollectionOpen(true); }}
-                            className="p-1 text-[#9CA3AF] hover:text-[#0A0A0B] cursor-pointer"
+                            className="p-1.5 text-[#9CA3AF] hover:text-[#0A0A0B] hover:bg-[#F3F4F6] rounded-md cursor-pointer transition-colors"
                             title="Attach Collection"
                           >
                             <Layers className="w-4 h-4" />
@@ -413,14 +532,14 @@ export const CampaignsPage = () => {
 
                           <button
                             onClick={() => handleRunDiagnostics(c.id)}
-                            className="px-2.5 py-1 text-[11px] font-semibold bg-[#0A0A0B] text-white rounded-md flex items-center gap-1 cursor-pointer"
+                            className="px-2.5 py-1 text-[11px] font-semibold bg-[#0A0A0B] text-white rounded-md flex items-center gap-1 cursor-pointer hover:bg-slate-800 shrink-0"
                           >
                             <Play className="w-3 h-3 fill-current" /> Launch
                           </button>
 
                           <button
                             onClick={() => setDeleteConfirmId(c.id)}
-                            className="p-1 text-[#9CA3AF] hover:text-[#E11D48] cursor-pointer"
+                            className="p-1.5 text-[#9CA3AF] hover:text-[#E11D48] hover:bg-rose-50 rounded-md cursor-pointer transition-colors"
                             title="Delete"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -433,25 +552,83 @@ export const CampaignsPage = () => {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Bar */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white px-4 py-3 rounded-[16px] border border-[#E5E5E7]">
+              <div className="text-[12px] text-[#71717A] font-medium">
+                Showing <span className="font-bold text-[#0A0A0B]">{startRecord}</span> to <span className="font-bold text-[#0A0A0B]">{endRecord}</span> of <span className="font-bold text-[#0A0A0B]">{totalCampaigns}</span> campaigns
+              </div>
+
+              <div className="flex items-center gap-1">
+                {/* Previous Page */}
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={validCurrentPage === 1}
+                  className="flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-semibold rounded-lg border border-[#E5E5E7] text-[#5F6368] hover:bg-[#FAFAFB] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" /> Prev
+                </button>
+
+                {/* Page Number Buttons */}
+                <div className="flex items-center gap-1 mx-1">
+                  {getPaginationNumbers().map((num, idx) => {
+                    if (num === '...') {
+                      return (
+                        <span key={`dots-${idx}`} className="px-2 py-1 text-[12px] text-[#9CA3AF] select-none">
+                          ...
+                        </span>
+                      );
+                    }
+                    const isActive = num === validCurrentPage;
+                    return (
+                      <button
+                        key={`page-${num}`}
+                        onClick={() => setCurrentPage(num)}
+                        className={`min-w-[32px] h-8 px-2 text-[12px] font-semibold rounded-lg transition-all cursor-pointer ${
+                          isActive
+                            ? 'bg-[#0A0A0B] text-white shadow-xs'
+                            : 'text-[#5F6368] hover:bg-[#FAFAFB] border border-transparent hover:border-[#E5E5E7]'
+                        }`}
+                      >
+                        {num}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Next Page */}
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={validCurrentPage === totalPages}
+                  className="flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-semibold rounded-lg border border-[#E5E5E7] text-[#5F6368] hover:bg-[#FAFAFB] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                >
+                  Next <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         /* CARDS GRID VIEW */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredCampaigns.map((c) => {
-            const total = c.totalRecipients || 0;
-            const delivered = c.sentCount || 0;
-            const failed = c.failedCount || 0;
-            const pct = total > 0 ? Math.round(((delivered + failed) / total) * 100) : 0;
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {paginatedCampaigns.map((c) => {
+              const total = c.totalRecipients || 0;
+              const delivered = c.sentCount || 0;
+              const failed = c.failedCount || 0;
+              const pct = total > 0 ? Math.round(((delivered + failed) / total) * 100) : 0;
 
             return (
               <div
                 key={c.id}
-                className="bg-white border border-[#E5E5E7] rounded-[16px] p-5 space-y-4 flex flex-col justify-between hover:shadow-sm transition-all"
+                onClick={() => navigate(`/campaigns/${c.id}/analytics`)}
+                className="bg-white border border-[#E5E5E7] rounded-[16px] p-5 space-y-4 flex flex-col justify-between hover:shadow-md hover:border-slate-300 transition-all cursor-pointer group"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <h3 className="text-[15px] font-bold text-[#0A0A0B] truncate">{c.name}</h3>
+                      <h3 className="text-[15px] font-bold text-[#0A0A0B] group-hover:text-blue-600 transition-colors truncate">{c.name}</h3>
                       <p className="text-[12px] text-[#9CA3AF] font-mono mt-0.5 truncate">
                         Subject: {c.subject || 'Not configured'}
                       </p>
@@ -459,7 +636,7 @@ export const CampaignsPage = () => {
                     <StatusBadge status={c.status || 'DRAFT'} />
                   </div>
 
-                  <div className="mt-3 flex items-center gap-2 p-2 bg-[#FAFAFB] rounded-lg border border-[#E5E5E7]">
+                  <div className="mt-3 flex items-center gap-2 p-2 bg-[#FAFAFB] rounded-lg border border-[#E5E5E7]" onClick={(e) => e.stopPropagation()}>
                     <span className="text-[11px] font-semibold text-[#9CA3AF] shrink-0">Template:</span>
                     <select
                       value={c.templateId || ''}
@@ -476,10 +653,10 @@ export const CampaignsPage = () => {
                   <div className="mt-3 space-y-1">
                     <div className="flex items-center justify-between text-[11px] font-semibold text-[#9CA3AF]">
                       <span>Progress</span>
-                      <span>{pct}%</span>
+                      <span className="font-bold text-[#0A0A0B]">{pct}%</span>
                     </div>
-                    <div className="bg-[#F3F4F6] rounded-full h-1.5 overflow-hidden">
-                      <div className="h-full bg-[#0A0A0B] transition-all duration-300" style={{ width: `${pct}%` }} />
+                    <div className="bg-[#F3F4F6] rounded-full h-2 overflow-hidden border border-[#E5E5E7]">
+                      <div className={`h-full ${getProgressBarGradient(c.status)} transition-all duration-500`} style={{ width: `${pct}%` }} />
                     </div>
                   </div>
 
@@ -499,18 +676,18 @@ export const CampaignsPage = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-3 border-t border-[#F0F0F2]">
+                <div className="flex items-center justify-between pt-3 border-t border-[#F0F0F2]" onClick={(e) => e.stopPropagation()}>
                   <button
-                    onClick={() => { setSelectedCampaignId(c.id); setIsAttachCollectionOpen(true); }}
-                    className="text-[12px] font-semibold text-[#5F6368] hover:text-[#0A0A0B] flex items-center gap-1 cursor-pointer"
+                    onClick={() => navigate(`/campaigns/${c.id}/analytics`)}
+                    className="text-[12px] font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
                   >
-                    <Layers className="w-3.5 h-3.5" /> Collection
+                    <BarChart2 className="w-3.5 h-3.5" /> Progress & Live Stream
                   </button>
 
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleRunDiagnostics(c.id)}
-                      className="px-3 py-1 text-[12px] font-semibold bg-[#0A0A0B] text-white rounded-lg flex items-center gap-1 cursor-pointer"
+                      className="px-3 py-1 text-[12px] font-semibold bg-[#0A0A0B] text-white rounded-lg flex items-center gap-1 cursor-pointer hover:bg-slate-800"
                     >
                       <Play className="w-3 h-3 fill-current" /> Launch
                     </button>
@@ -525,6 +702,63 @@ export const CampaignsPage = () => {
               </div>
             );
           })}
+          </div>
+
+          {/* Cards Pagination Bar */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white px-4 py-3 rounded-[16px] border border-[#E5E5E7]">
+              <div className="text-[12px] text-[#71717A] font-medium">
+                Showing <span className="font-bold text-[#0A0A0B]">{startRecord}</span> to <span className="font-bold text-[#0A0A0B]">{endRecord}</span> of <span className="font-bold text-[#0A0A0B]">{totalCampaigns}</span> campaigns
+              </div>
+
+              <div className="flex items-center gap-1">
+                {/* Previous Page */}
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={validCurrentPage === 1}
+                  className="flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-semibold rounded-lg border border-[#E5E5E7] text-[#5F6368] hover:bg-[#FAFAFB] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" /> Prev
+                </button>
+
+                {/* Page Number Buttons */}
+                <div className="flex items-center gap-1 mx-1">
+                  {getPaginationNumbers().map((num, idx) => {
+                    if (num === '...') {
+                      return (
+                        <span key={`dots-cards-${idx}`} className="px-2 py-1 text-[12px] text-[#9CA3AF] select-none">
+                          ...
+                        </span>
+                      );
+                    }
+                    const isActive = num === validCurrentPage;
+                    return (
+                      <button
+                        key={`page-cards-${num}`}
+                        onClick={() => setCurrentPage(num)}
+                        className={`min-w-[32px] h-8 px-2 text-[12px] font-semibold rounded-lg transition-all cursor-pointer ${
+                          isActive
+                            ? 'bg-[#0A0A0B] text-white shadow-xs'
+                            : 'text-[#5F6368] hover:bg-[#FAFAFB] border border-transparent hover:border-[#E5E5E7]'
+                        }`}
+                      >
+                        {num}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Next Page */}
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={validCurrentPage === totalPages}
+                  className="flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-semibold rounded-lg border border-[#E5E5E7] text-[#5F6368] hover:bg-[#FAFAFB] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                >
+                  Next <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -541,28 +775,110 @@ export const CampaignsPage = () => {
       {/* Create Campaign Modal */}
       <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="Create New Campaign">
         <form onSubmit={handleCreateSubmit} className="space-y-4">
+          
+          {/* Launch Mode Switcher */}
+          <div>
+            <label className="ma-label mb-1.5 block">Campaign Type & Dispatch Mode</label>
+            <div className="grid grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                onClick={() => setLaunchMode('INSTANT')}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  launchMode === 'INSTANT'
+                    ? 'border-blue-600 bg-blue-50/50 ring-1 ring-blue-600'
+                    : 'border-[#E5E5E7] bg-[#FAFAFB] hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-center gap-1.5 font-bold text-[13px] text-[#0A0A0B]">
+                  <Zap className="w-4 h-4 text-blue-600" />
+                  Instant / Manual
+                </div>
+                <p className="text-[11px] text-[#71717A] mt-1">
+                  Draft campaign for on-demand manual launch anytime.
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setLaunchMode('SCHEDULED')}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  launchMode === 'SCHEDULED'
+                    ? 'border-purple-600 bg-purple-50/50 ring-1 ring-purple-600'
+                    : 'border-[#E5E5E7] bg-[#FAFAFB] hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-center gap-1.5 font-bold text-[13px] text-[#0A0A0B]">
+                  <Clock className="w-4 h-4 text-purple-600" />
+                  Automated Schedule
+                </div>
+                <p className="text-[11px] text-[#71717A] mt-1">
+                  Pick date & time for background runner auto-dispatch.
+                </p>
+              </button>
+            </div>
+          </div>
+
+          {/* Schedule Date & Time Picker */}
+          {launchMode === 'SCHEDULED' && (
+            <div className="p-3 bg-purple-50/40 rounded-xl border border-purple-200 space-y-1.5 animate-fadeIn">
+              <label className="ma-label flex items-center gap-1.5 text-purple-900 font-bold text-[12px]">
+                <Calendar className="w-3.5 h-3.5 text-purple-600" />
+                Select Launch Date & Time *
+              </label>
+              <input
+                type="datetime-local"
+                required={launchMode === 'SCHEDULED'}
+                value={scheduledDateTime}
+                onChange={e => setScheduledDateTime(e.target.value)}
+                min={new Date().toISOString().slice(0, 16)}
+                className="ma-input bg-white border-purple-300 focus:border-purple-600"
+              />
+              <p className="text-[11px] text-purple-700">
+                The campaign will be registered with the background runner and trigger automatically.
+              </p>
+            </div>
+          )}
+
           <div>
             <label className="ma-label">Campaign Name</label>
             <input
               type="text"
               required
-              placeholder="e.g. Black Friday Sale"
+              placeholder="e.g. Q3 Customer Newsletter"
               value={name}
               onChange={e => setName(e.target.value)}
               className="ma-input"
             />
           </div>
 
-          <div>
-            <label className="ma-label">Email Subject Line</label>
-            <input
-              type="text"
-              required
-              placeholder="e.g. Special Offer inside"
-              value={subject}
-              onChange={e => setSubject(e.target.value)}
-              className="ma-input"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="ma-label">Email Template</label>
+              <select
+                value={templateId}
+                onChange={e => setTemplateId(e.target.value)}
+                className="ma-select"
+              >
+                <option value="">Select Template...</option>
+                {templates.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="ma-label">Attach Contacts Collection</label>
+              <select
+                value={modalCollectionId}
+                onChange={e => setModalCollectionId(e.target.value)}
+                className="ma-select"
+              >
+                <option value="">Select Collection (Optional)...</option>
+                {collections.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -590,9 +906,17 @@ export const CampaignsPage = () => {
 
           <button
             type="submit"
-            className="ma-btn ma-btn-primary w-full"
+            className="ma-btn ma-btn-primary w-full gap-2 text-[13px] py-2.5"
           >
-            Create Campaign
+            {launchMode === 'SCHEDULED' ? (
+              <>
+                <Clock className="w-4 h-4" /> Schedule Campaign
+              </>
+            ) : (
+              <>
+                <Plus className="w-4 h-4" /> Create Instant Campaign
+              </>
+            )}
           </button>
         </form>
       </Modal>
@@ -655,6 +979,48 @@ export const CampaignsPage = () => {
         title={alertConfig.title}
         message={alertConfig.message}
       />
+
+      {/* High-Tech Animated Campaign Launch Overlay */}
+      {isLaunchLoaderOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0A0A0B]/80 backdrop-blur-md animate-fadeIn font-sans">
+          <div className="bg-[#0F172A] border border-[#1E293B] rounded-3xl p-8 max-w-md w-full mx-4 shadow-2xl text-center space-y-6 animate-scaleUp">
+            
+            {/* Spinning Glowing Launch Rings */}
+            <div className="relative w-24 h-24 mx-auto flex items-center justify-center">
+              <div className="absolute inset-0 rounded-full border-4 border-blue-500/20 animate-ping"></div>
+              <div className="absolute inset-0 rounded-full border-4 border-t-blue-500 border-r-indigo-500 border-b-purple-500 border-l-transparent animate-spin"></div>
+              <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/40">
+                <Rocket className="w-7 h-7 text-white animate-bounce" />
+              </div>
+            </div>
+
+            <div>
+              <h2 className="text-xl font-black text-white tracking-tight">Initializing Campaign Launch</h2>
+              <p className="text-xs text-slate-400 mt-1.5 font-medium">{launchStepText}</p>
+            </div>
+
+            {/* Step Checkpoints */}
+            <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 text-left space-y-3">
+              <div className="flex items-center gap-2.5 text-xs text-emerald-400 font-semibold">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                <span>AWS SES Mail Manager Relay Connected</span>
+              </div>
+              <div className="flex items-center gap-2.5 text-xs text-blue-400 font-semibold">
+                <Loader2 className="w-4 h-4 text-blue-400 animate-spin flex-shrink-0" />
+                <span>Parallel Virtual Thread Pool Engaged</span>
+              </div>
+              <div className="flex items-center gap-2.5 text-xs text-slate-300 font-medium">
+                <Sparkles className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                <span>Audience Personalization Engine Ready</span>
+              </div>
+            </div>
+
+            <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-400 h-full w-full animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

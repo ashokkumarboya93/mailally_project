@@ -20,13 +20,16 @@ public class CampaignMapper {
         if (dto == null) return null;
         String effectiveEmail = (dto.getSenderEmail() != null && !dto.getSenderEmail().isBlank()) ? dto.getSenderEmail().trim() : "info@marcamor.com";
         String effectiveName = (dto.getSenderName() != null && !dto.getSenderName().isBlank()) ? dto.getSenderName().trim() : "Marcamor";
+        String effectiveSubject = (dto.getSubject() != null && !dto.getSubject().isBlank()) 
+                ? dto.getSubject().trim() 
+                : (template != null && template.getSubject() != null ? template.getSubject() : dto.getName());
 
         return Campaign.builder()
                 .organization(organization)
                 .template(template)
                 .segment(segment)
                 .name(dto.getName() != null ? dto.getName().trim() : null)
-                .subject(dto.getSubject())
+                .subject(effectiveSubject)
                 .senderName(effectiveName)
                 .fromName(effectiveName)
                 .fromEmail(effectiveEmail)

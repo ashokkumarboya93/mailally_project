@@ -32,4 +32,6 @@ public interface CampaignService {
 
     Page<CampaignResponseDto> searchCampaigns(CustomUserDetails currentUser, String name, String status,
                                               int page, int size, String sortBy, String sortDir);
+
+    CampaignResponseDto addContactsToCampaign(CustomUserDetails currentUser, Long campaignId, java.util.List<Long> contactIds);
 }

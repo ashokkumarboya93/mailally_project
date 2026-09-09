@@ -101,16 +101,16 @@ public class BatchGenerator {
     }
 
     private int getOptimalBatchSize(String provider) {
-        if (provider == null) return 100;
+        if (provider == null) return 300;
         switch (provider.toUpperCase()) {
             case "SES":
                 return 200;
             case "BREVO":
-                return 100;
+                return 300;
             case "SMTP":
                 return 20;
             default:
-                return 100;
+                return 300;
         }
     }
 

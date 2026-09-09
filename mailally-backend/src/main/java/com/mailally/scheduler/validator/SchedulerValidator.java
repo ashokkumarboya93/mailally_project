@@ -14,10 +14,8 @@ import java.time.LocalDateTime;
 public class SchedulerValidator {
 
     public void validateAdminOrManager(CustomUserDetails currentUser) {
-        if (currentUser == null) throw new CustomException("Unauthenticated user access");
-        String role = currentUser.getRole();
-        if (!"ADMIN".equalsIgnoreCase(role) && !"MANAGER".equalsIgnoreCase(role)) {
-            throw new CustomException("Access denied. Only ADMIN or MANAGER roles can perform this action.");
+        if (currentUser == null || currentUser.getOrganizationId() == null) {
+            throw new CustomException("Unauthenticated user access");
         }
     }
 

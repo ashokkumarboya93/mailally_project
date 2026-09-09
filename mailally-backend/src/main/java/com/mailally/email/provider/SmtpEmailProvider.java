@@ -24,6 +24,9 @@ public class SmtpEmailProvider implements EmailProvider {
     @Value("${spring.mail.username:}")
     private String mailUsername;
 
+    @Value("${mailally.email.default-sender-email:info@marcamor.com}")
+    private String defaultSenderEmail;
+
     @Value("${spring.mail.host:smtp.gmail.com}")
     private String smtpHost;
 
@@ -36,17 +39,18 @@ public class SmtpEmailProvider implements EmailProvider {
 
     @Override
     public EmailSendResult send(String to, String toName, String from, String fromName, String replyTo, String subject, String htmlBody) {
-        String effectiveFrom = (from != null && !from.isBlank()) ? from : mailUsername;
-        if (effectiveFrom == null || effectiveFrom.isBlank()) {
-            effectiveFrom = mailUsername;
+        String effectiveFrom = (from != null && !from.isBlank() && from.contains("@")) ? from : defaultSenderEmail;
+        if (effectiveFrom == null || !effectiveFrom.contains("@")) {
+            effectiveFrom = "info@marcamor.com";
         }
 
+        long startMs = System.currentTimeMillis();
         log.info("[SMTP DIAGNOSTIC] Initiating send -> Provider: SMTP | Host: {}:{} | Sender: {} | Recipient: {}",
                 smtpHost, smtpPort, effectiveFrom, to);
 
         try {
             MimeMessage message = javaMailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
 
             if (fromName != null && !fromName.isBlank()) {
                 helper.setFrom(effectiveFrom, fromName);
@@ -65,9 +69,10 @@ public class SmtpEmailProvider implements EmailProvider {
 
             javaMailSender.send(message);
 
+            long durationMs = System.currentTimeMillis() - startMs;
             String messageId = "SMTP-" + UUID.randomUUID().toString();
-            log.info("[SMTP DIAGNOSTIC SUCCESS] Email delivered -> Recipient: {} | Message ID: {}", to, messageId);
-            return EmailSendResult.ok(messageId, PROVIDER_NAME, "250 OK");
+            log.info("[SMTP DIAGNOSTIC SUCCESS] Email delivered in {}ms -> Recipient: {} | Message ID: {}", durationMs, to, messageId);
+            return EmailSendResult.ok(messageId, PROVIDER_NAME, "250 OK (" + durationMs + "ms)");
         } catch (Exception ex) {
             String exClassName = ex.getClass().getName();
             String exMsg = ex.getMessage() != null ? ex.getMessage() : ex.toString();
@@ -100,13 +105,14 @@ public class SmtpEmailProvider implements EmailProvider {
                 smtpCode = "550";
             }
 
-            // Retry with authenticated username if custom sender was rejected
-            if (mailUsername != null && !mailUsername.isBlank() && !mailUsername.equalsIgnoreCase(effectiveFrom)) {
+            // Retry with authenticated sender email if custom sender was rejected
+            String fallbackFrom = (mailUsername != null && mailUsername.contains("@")) ? mailUsername : defaultSenderEmail;
+            if (fallbackFrom != null && !fallbackFrom.equalsIgnoreCase(effectiveFrom)) {
                 try {
-                    log.info("[SMTP FALLBACK RETRY] Retrying send to {} using authenticated mailUsername: {}", to, mailUsername);
+                    log.info("[SMTP FALLBACK RETRY] Retrying send to {} using fallbackFrom: {}", to, fallbackFrom);
                     MimeMessage message = javaMailSender.createMimeMessage();
-                    MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-                    helper.setFrom(mailUsername, fromName != null ? fromName : "MailAlly");
+                    MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
+                    helper.setFrom(fallbackFrom, fromName != null ? fromName : "MailAlly");
                     helper.setTo(to);
                     if (replyTo != null && !replyTo.isBlank()) {
                         helper.setReplyTo(replyTo);

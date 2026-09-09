@@ -97,10 +97,23 @@ public class NotificationServiceImpl implements NotificationService {
                                                      String message, String priority, String sourceModule,
                                                      Long referenceId, String actionUrl) {
         Organization org = organizationRepository.findById(organizationId)
-                .orElseThrow(() -> new CustomException("Organization not found for event notification"));
+                .orElse(null);
+        if (org == null) {
+            log.warn("Organization {} not found for event notification: {}", organizationId, title);
+            return null;
+        }
 
-        User targetUser = userRepository.findByIdAndOrganizationIdAndIsDeletedFalse(userId, organizationId)
-                .orElseThrow(() -> new CustomException("Target user not found with ID: " + userId));
+        User targetUser = null;
+        if (userId != null) {
+            targetUser = userRepository.findByIdAndOrganizationIdAndIsDeletedFalse(userId, organizationId).orElse(null);
+        }
+        if (targetUser == null) {
+            targetUser = userRepository.findByOrganizationIdAndIsDeletedFalse(organizationId).stream().findFirst().orElse(null);
+        }
+        if (targetUser == null) {
+            log.warn("No user found in organization {} for notification: {}", organizationId, title);
+            return null;
+        }
 
         Notification notification = Notification.builder()
                 .organization(org)
@@ -113,12 +126,16 @@ public class NotificationServiceImpl implements NotificationService {
                 .sourceModule(sourceModule != null ? sourceModule.toUpperCase() : "SYSTEM")
                 .referenceId(referenceId)
                 .actionUrl(actionUrl)
-                .createdBy(userId)
-                .updatedBy(userId)
+                .createdBy(targetUser.getId())
+                .updatedBy(targetUser.getId())
                 .build();
 
         Notification saved = notificationRepository.save(notification);
-        dispatchToChannel(saved);
+        try {
+            dispatchToChannel(saved);
+        } catch (Exception e) {
+            log.warn("Failed to dispatch notification to channel: {}", e.getMessage());
+        }
 
         return notificationMapper.toNotificationResponseDto(saved);
     }

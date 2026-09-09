@@ -22,6 +22,7 @@ import java.util.Map;
  */
 @Configuration
 @EnableKafka
+@SuppressWarnings("deprecation")
 @ConditionalOnProperty(name = "spring.kafka.enabled", havingValue = "true", matchIfMissing = false)
 public class KafkaConfig {
 

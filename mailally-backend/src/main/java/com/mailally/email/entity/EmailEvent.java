@@ -9,7 +9,10 @@ import java.time.LocalDateTime;
  * Entity representing an immutable delivery or engagement event log record.
  */
 @Entity
-@Table(name = "email_events")
+@Table(name = "email_events", indexes = {
+    @Index(name = "idx_ee_org_timestamp", columnList = "organization_id, timestamp"),
+    @Index(name = "idx_ee_campaign_type", columnList = "campaign_id, event_type")
+})
 public class EmailEvent {
 
     @Id

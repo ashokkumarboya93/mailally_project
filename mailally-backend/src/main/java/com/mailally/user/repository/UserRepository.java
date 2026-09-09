@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -27,6 +28,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByIdAndIsDeletedFalse(Long id);
 
     Optional<User> findByIdAndOrganizationIdAndIsDeletedFalse(Long id, Long organizationId);
+
+    List<User> findByOrganizationIdAndIsDeletedFalse(Long organizationId);
 
     Page<User> findByOrganizationIdAndIsDeletedFalse(Long organizationId, Pageable pageable);
 
